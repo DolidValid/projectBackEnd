@@ -1,14 +1,13 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const cors = require("cors");
-const userRoutes = require("./routes/userRoutes");
+import express from "express";
+import cors from "cors";
+import userRoutes from "./routes/userRoutes.js";
 
 const app = express();
 const PORT = 5000;
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json()); // Use the built-in express.json() middleware
 
 // Routes
 app.use("/api/users", userRoutes);

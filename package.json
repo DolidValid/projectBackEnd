@@ -9,6 +9,10 @@
   "author": "brahamia oualid",
   "license": "ISC",
   "dependencies": {
-    "express": "^5.1.0"
-  }
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "oracledb": "^6.9.0",
+    "routes": "^2.1.0"
+  },
+  "type": "module"
 }

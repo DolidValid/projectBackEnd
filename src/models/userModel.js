@@ -1,4 +1,4 @@
-const { getConnection } = require("../config/db");
+import  getConnection  from "../config/db.js";
 
 async function insertUser({ firstName, lastName, email, phone }) {
   let connection;
@@ -27,4 +27,4 @@ async function insertUser({ firstName, lastName, email, phone }) {
   }
 }
 
-module.exports = { insertUser };
+export default insertUser ;
