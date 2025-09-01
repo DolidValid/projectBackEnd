@@ -1,5 +1,5 @@
 import { Router } from "express";
-import addUser  from "../controllers/userController.js";
+import addInfoFiles  from "../controllers/userController.js";
 
 /**
  * Express router instance for handling user-related routes.
@@ -7,6 +7,8 @@ import addUser  from "../controllers/userController.js";
  */
 const router = Router();
 
-router.post("/add-user", addUser);
+router.post("/add-user", addInfoFiles);
 
 export default router;
+
+

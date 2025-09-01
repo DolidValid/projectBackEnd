@@ -1,9 +1,11 @@
 import oracledb from "oracledb";
 
+oracledb.initOracleClient({ libDir: "C:\\Program Files\\instantclient-basic-windows.x64-21.8.0.0.0dbru\\instantclient_21_8" }); 
+
 const dbConfig = {
-  user: "your_db_username",
-  password: "your_db_password",
-  connectString: "your_oracle_server_ip:1521/ORCLPDB1"
+  user: "ESB_BATCH",
+  password: "esb_batch123",
+  connectString: "salesbodbp-scan:1521/SRV_TIBCOPR_LB"
 };
 
 async function getConnection() {
