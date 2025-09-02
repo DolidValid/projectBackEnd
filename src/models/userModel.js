@@ -11,10 +11,11 @@ Insert into INFO_FILE
     INSERT_DATE, EXECUTION_DATE, EXECUTION_DELAY, ETAT, IS_LOCKED, 
     OPERATION_FILE, NBR_ERROR_LINES, USER_BATCH, USER_AD)
  Values
-   (:email, 'Set3GProfile_192025_13919', 'FILE',:phone, TO_DATE('01/09/2025 13:09:01', 'DD/MM/YYYY HH24:MI:SS'), 
-    TO_DATE('01/09/2025 13:09:01', 'DD/MM/YYYY HH24:MI:SS'), TO_DATE('01/09/2025 13:09:14', 'DD/MM/YYYY HH24:MI:SS'), 5, 'C', 0, 
-    'FILE', 0, :firsName, :lastName);
-COMMIT`;
+   (:email, 'Set3GProfile_192025_13919', 'FILE', :phone, 
+    TO_DATE('01/09/2025 13:09:01', 'DD/MM/YYYY HH24:MI:SS'), 
+    TO_DATE('01/09/2025 13:09:01', 'DD/MM/YYYY HH24:MI:SS'), 
+    TO_DATE('01/09/2025 13:09:14', 'DD/MM/YYYY HH24:MI:SS'), 
+    5, 'C', 0, 'FILE', 0, :firstName, :lastName)`;
 
     await connection.execute(sql, { firstName, lastName, email, phone }, { autoCommit: true });
 
