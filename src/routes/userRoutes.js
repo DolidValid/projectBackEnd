@@ -1,5 +1,5 @@
 import { Router } from "express";
-import addInfoFiles  from "../controllers/userController.js";
+import { addInfoFiles, active4GHandler } from "../controllers/userController.js";
 
 /**
  * Express router instance for handling user-related routes.
@@ -7,8 +7,10 @@ import addInfoFiles  from "../controllers/userController.js";
  */
 const router = Router();
 
+// Add a user
 router.post("/add-user", addInfoFiles);
 
+// New active4G API
+router.post("/active4G", active4GHandler);
+
 export default router;
-
-
