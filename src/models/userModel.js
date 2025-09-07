@@ -34,29 +34,41 @@ Insert into INFO_FILE
   }
 }
 
-async function InsertSet3g({ fileId, id, promo }) {
+async function InsertSet3g({
+  id,
+  msisdn,
+  action,
+  signContractDate,
+  templateName,
+  userLogin,
+  fileId,
+  notificationMsisdn,
+  notificationTemplate,
+}) {
   let connection;
   try {
     connection = await getConnection();
 
     const sql = `
-      INSERT INTO INFO_FILE
-        (ID, FILE_NAME, SOURCE_FILE, RECORD_NUMBER, UPLOAD_DATE, 
-         INSERT_DATE, EXECUTION_DATE, EXECUTION_DELAY, ETAT, IS_LOCKED, 
-         OPERATION_FILE, NBR_ERROR_LINES, USER_BATCH, USER_AD)
+      INSERT INTO SET_3G_PROFILE_BATCH
+        (ID, MSISDN, ACTION, SIGN_CONTRACT_3G_DATE, TEMPLATE_NAME, 
+         USER_LOGIN, FILE_ID, NOTIFICATION_MSISDN, NOTIFICATION_TEMPLATE)
       VALUES
-        (:id, :fileName, 'FILE', :fileId, 
-         TO_DATE('01/09/2025 13:09:01', 'DD/MM/YYYY HH24:MI:SS'), 
-         TO_DATE('01/09/2025 13:09:01', 'DD/MM/YYYY HH24:MI:SS'), 
-         TO_DATE('01/09/2025 13:09:14', 'DD/MM/YYYY HH24:MI:SS'), 
-         5, 'C', 0, 'FILE', 0, :promo, 'SYSTEM')
+        (:id, :msisdn, :action, :signContractDate, :templateName,
+         :userLogin, :fileId, :notificationMsisdn, :notificationTemplate)
     `;
 
     const binds = {
       id,
-      fileId,
-      fileName: `Set3GProfile_${fileId}_${Date.now()}`, // dynamic name for uniqueness
-      promo,
+      msisdn,
+      action,
+      signContractDate,
+      templateName: templateName || promo, // if you want promo as default
+      userLogin: userLogin || "crmesb",   // default if not passed
+      fileId: `Set3GProfile_${fileId}_${Date.now()}`, // dynamic unique file id
+      notificationMsisdn: notificationMsisdn || msisdn,
+      notificationTemplate: notificationTemplate || promo,
+      jobId,
     };
 
     await connection.execute(sql, binds, { autoCommit: true });
@@ -75,5 +87,6 @@ async function InsertSet3g({ fileId, id, promo }) {
     }
   }
 }
+
 
 export { insertInfoFile, InsertSet3g };
