@@ -24,7 +24,7 @@ async function addInfoFiles(req, res) {
  */
 async function active4GHandler(req, res) {
   try {
-    console.log("Request Body:", req.body);
+    console.log("Request Body:");
 
     const {
       id,
@@ -42,7 +42,9 @@ async function active4GHandler(req, res) {
 
     // Basic validation
     if (!id || !msisdn || !action || !fileId || !jobId) {
-      return res.status(400).json({ error: "Missing required fields" });
+      const a = res.status(400).json({ error: "Missing required fields" });
+      console.log('a issssss',a);
+      return a;
     }
 
     // Call model function
@@ -56,10 +58,9 @@ async function active4GHandler(req, res) {
       fileId,
       notificationMsisdn,
       notificationTemplate,
-      jobId,
       promo,
     });
-
+console.log('result issssss',result)    ;
     res.json(result);
   } catch (err) {
     console.error("active4GHandler failed:", err);
