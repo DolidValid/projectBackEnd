@@ -7,9 +7,9 @@ async function addInfoFiles(req, res) {
   try {
     console.log(req.body);
 
-    const { firstName, lastName, email, phone } = req.body;
+    const { executionDate, lineCount, fileId } = req.body;
 
-    if (!firstName || !lastName || !email || !phone) {
+    if (!executionDate || !lineCount || !fileId ) {
       return res.status(400).json({ error: "All fields are required" });
     }
 

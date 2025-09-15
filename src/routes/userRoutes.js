@@ -8,7 +8,7 @@ import { addInfoFiles, active4GHandler,fetchJobsHandler } from "../controllers/u
 const router = Router();
 
 // Add a user
-router.post("/add-user", addInfoFiles);
+router.post("/add-batch", addInfoFiles);
 
 // New active4G API
 router.post("/active4G", active4GHandler);
