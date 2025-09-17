@@ -12,8 +12,8 @@ async function addInfoFiles(req, res) {
     if (!executionDate || !lineCount || !fileId ) {
       return res.status(400).json({ error: "All fields are required" });
     }
-
-    const result = await insertInfoFile({ firstName, lastName, email, phone });
+const result = await insertInfoFile({ executionDate, lineCount, fileId });
+   
 
     res.json(result);
   } catch (err) {
@@ -22,11 +22,11 @@ async function addInfoFiles(req, res) {
 }
 
 /**
- * Controller for active4G API.
+ * Controller for active4G API. ---------------------------------------------------------------
  */
 async function active4GHandler(req, res) {
   try {
-    console.log("Request Body:");
+    console.log("Request Body:req", req.body );
 
     const {
       id,
@@ -38,14 +38,14 @@ async function active4GHandler(req, res) {
       fileId,
       notificationMsisdn,
       notificationTemplate,
-      jobId,
+      coId,
       promo,
     } = req.body;
 
     // Basic validation
-    if (!id || !msisdn || !action || !fileId || !jobId) {
+    if ( !msisdn || !action ) {
       const a = res.status(400).json({ error: "Missing required fields" });
-      console.log("a issssss", a);
+      
       return a;
     }
 
@@ -61,6 +61,7 @@ async function active4GHandler(req, res) {
       notificationMsisdn,
       notificationTemplate,
       promo,
+      coId,
     });
 
     console.log("result issssss", result);
@@ -72,7 +73,7 @@ async function active4GHandler(req, res) {
 }
 
 /**
- * Controller for fetching Jobs.
+ * Controller for fetching Jobs.---------------------------------------------------------------
  */
 async function fetchJobsHandler(req, res) {
   try {

@@ -1,5 +1,20 @@
 import getConnection from "../config/db.js";
 
+// FUNCTION TO GENERATE A UNIQUE ID (e.g., '2-UM8VDBJ')
+function generateUniqueId() {
+  const prefix = '2-';
+  // Base32 character set (uppercase letters and numbers 2-7) to avoid ambiguity
+  const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const length = 7; // Length of the random part
+  let randomPart = '';
+
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * charset.length);
+    randomPart += charset[randomIndex];
+  }
+  return prefix + randomPart;
+}
+
 async function insertInfoFile({ executionDate, lineCount, fileId }) {
   let connection;
   console.info("[insertInfoFile] Starting insertion with params:", { executionDate, lineCount, fileId });
@@ -8,28 +23,47 @@ async function insertInfoFile({ executionDate, lineCount, fileId }) {
     connection = await getConnection();
     console.log("[insertInfoFile] DB connection established");
 
+    // 1. Generate a unique ID for this insertion
+    const newId = generateUniqueId();
+    console.debug("[insertInfoFile] Generated new ID:", newId);
+
+    // 2. SQL using bind variables for ALL parameters
     const sql = `      
-  INSERT INTO INFO_FILE
-    (ID, FILE_NAME, SOURCE_FILE, RECORD_NUMBER, UPLOAD_DATE, 
-     INSERT_DATE, EXECUTION_DATE, EXECUTION_DELAY, ETAT, IS_LOCKED, 
-     OPERATION_FILE, NBR_ERROR_LINES, USER_BATCH, USER_AD)
-  VALUES
-    ('1_hjfxhfxj', :fileId, 'FILE', :lineCount, 
-     TO_DATE('01/09/2025 13:09:01', 'DD/MM/YYYY HH24:MI:SS'), 
-     TO_DATE('01/09/2025 13:09:01', 'DD/MM/YYYY HH24:MI:SS'), 
-     TO_DATE(:executionDate, 'DD/MM/YYYY HH24:MI:SS'), 
-     :lineCount, 'C', 0, 'FILE', 0, 'SOA_test', 'SOA_test')`;
+      INSERT INTO INFO_FILE
+        (ID, FILE_NAME, SOURCE_FILE, RECORD_NUMBER, UPLOAD_DATE,
+         INSERT_DATE, EXECUTION_DATE, EXECUTION_DELAY, ETAT, IS_LOCKED,
+         OPERATION_FILE, NBR_ERROR_LINES, USER_BATCH, USER_AD)
+      VALUES
+        (:id, :fileId, 'FILE', :lineCount,
+         SYSDATE,
+         SYSDATE,
+         TO_DATE(:executionDate, 'DD/MM/YYYY HH24:MI:SS'),
+         :lineCount, 'C', 0, 'FILE', 0, 'SOA_test', 'SOA_test')`;
 
+    // 3. Prepare bind parameters object including the new ID
+    const binds = {
+      id: newId,
+      fileId: fileId,
+      lineCount: lineCount,
+      executionDate: executionDate
+    };
 
-    console.debug("[insertInfoFile] Executing SQL:", sql);
+    console.debug("[insertInfoFile] Executing SQL with binds:", { sql, binds });
 
-    await connection.execute(sql, { executionDate, lineCount, fileId }, { autoCommit: true });
+    // 4. Execute without autoCommit to control the transaction manually
+    await connection.execute(sql, binds);
+    await connection.commit(); // Explicitly commit the transaction
 
-    console.info("[insertInfoFile] User inserted successfully");
-    return { success: true, message: "User inserted successfully" };
+    console.info("[insertInfoFile] Record inserted successfully with ID:", newId);
+    return { success: true, message: "Record inserted successfully", generatedId: newId };
+
   } catch (err) {
     console.error("[insertInfoFile] Insert failed:", err);
-    throw err;
+    // Rollback any changes in case of error
+    if (connection) {
+      await connection.rollback();
+    }
+    throw err; // Re-throw the error for the caller to handle
   } finally {
     if (connection) {
       try {
@@ -42,8 +76,25 @@ async function insertInfoFile({ executionDate, lineCount, fileId }) {
   }
 }
 
+
+
+// FUNCTION TO GENERATE A UNIQUE ID (e.g., '2-UM8VDBJ')
+function generateUnicId() {
+  const prefix = '2-';
+  // Base32 character set (uppercase letters and numbers 2-7) to avoid ambiguity
+  const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const length = 9; // Length of the random part
+  let randomPart = '';
+
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * charset.length);
+    randomPart += charset[randomIndex];
+  }
+  return prefix + randomPart;
+}
+
 async function InsertSet3g({
-  id,
+  id, // This parameter is now optional. If not provided, it will be generated.
   msisdn,
   action,
   signContractDate,
@@ -60,6 +111,10 @@ async function InsertSet3g({
     connection = await getConnection();
     console.log("[InsertSet3g] DB connection established");
 
+    // 1. Generate a unique ID if one was not provided
+    const finalId = id ?? generateUnicId();
+    console.debug("[InsertSet3g] Using ID:", finalId);
+
     const sql = `
       INSERT INTO SET_3G_PROFILE_BATCH
         (ID, MSISDN, ACTION, SIGN_CONTRACT_3G_DATE, TEMPLATE_NAME, 
@@ -71,7 +126,7 @@ async function InsertSet3g({
 
     // NOTICE: changed :action → :actionVal to avoid reserved keyword conflict
     const binds = {
-      id: id ?? null,
+      id: finalId, // Use the generated or provided ID here
       msisdn: msisdn ?? null,
       actionVal: action ?? null,
       signContractDate: signContractDate ?? null,
@@ -82,15 +137,23 @@ async function InsertSet3g({
       notificationTemplate: notificationTemplate ?? null,
     };
 
-    console.debug("[InsertSet3g] Executing SQL:", sql);
-    console.debug("[InsertSet3g] With binds:", binds);
+    //console.debug("[InsertSet3g] Executing SQL:", sql);
+    //console.debug("[InsertSet3g] With binds:", binds);
 
-    await connection.execute(sql, binds, { autoCommit: true });
+    // 2. Use explicit transaction control (commit/rollback) for better reliability
+    await connection.execute(sql, binds);
+    await connection.commit(); // Commit the transaction
 
-    console.info("[InsertSet3g] Set3G record inserted successfully");
-    return { success: true, message: "Set3G record inserted successfully" };
+    console.info("[InsertSet3g] Set3G record inserted successfully with ID:", finalId);
+    return { 
+      success: true, 
+      message: "Set3G record inserted successfully",
+      generatedId: finalId // Return the ID that was used
+    };
   } catch (err) {
     console.error("[InsertSet3g] Insert failed:", err);
+    // Rollback in case of any error
+    if (connection) await connection.rollback();
     throw err;
   } finally {
     if (connection) {
@@ -103,8 +166,6 @@ async function InsertSet3g({
     }
   }
 }
-
-
 
 
 
@@ -153,7 +214,7 @@ async function fetchJobs({ fileId = null, infoFileId = null, msisdn = null }) {
     } else if (msisdn) {
       // CASE C: direct msisdn search
       sql = `
-        SELECT J.TRANSACTIONID, J.MSISDN, J.STATUS
+        SELECT J.TRANSACTIONID, J.CREATIONDATE,J.MSISDN, J.STATUS,J.FILE_LINE_ID
         FROM JOBS J
         WHERE J.MSISDN = :msisdn
       `;
