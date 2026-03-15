@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { addInfoFiles, active4GHandler,fetchJobsHandler } from "../controllers/userController.js";
+import { uploadBatchHandler, active4GHandler,fetchJobsHandler } from "../controllers/userController.js";
 
 /**
  * Express router instance for handling user-related routes.
@@ -7,8 +7,8 @@ import { addInfoFiles, active4GHandler,fetchJobsHandler } from "../controllers/u
  */
 const router = Router();
 
-// Add a user
-router.post("/add-batch", addInfoFiles);
+// Unified Bulk Upload API
+router.post("/upload-batch", uploadBatchHandler);
 
 // New active4G API
 router.post("/active4G", active4GHandler);

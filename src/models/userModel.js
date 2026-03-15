@@ -1,4 +1,6 @@
 import getConnection from "../config/db.js";
+import fs from "fs/promises";
+import path from "path";
 
 // FUNCTION TO GENERATE A UNIQUE ID (e.g., '2-UM8VDBJ')
 function generateUniqueId() {
@@ -15,64 +17,45 @@ function generateUniqueId() {
   return prefix + randomPart;
 }
 
-async function insertInfoFile({ executionDate, lineCount, fileId }) {
-  let connection;
-  console.info("[insertInfoFile] Starting insertion with params:", { executionDate, lineCount, fileId });
+async function insertInfoFile({ executionDate, lineCount, fileId, operationType, fileData }) {
+  console.info(`[insertInfoFile] Starting bulk insertion for ${operationType} with params:`, { executionDate, lineCount, fileId });
 
   try {
-    connection = await getConnection();
-    console.log("[insertInfoFile] DB connection established");
-
     // 1. Generate a unique ID for this insertion
     const newId = generateUniqueId();
     console.debug("[insertInfoFile] Generated new ID:", newId);
 
-    // 2. SQL using bind variables for ALL parameters
-    const sql = `      
-      INSERT INTO INFO_FILE
-        (ID, FILE_NAME, SOURCE_FILE, RECORD_NUMBER, UPLOAD_DATE,
-         INSERT_DATE, EXECUTION_DATE, EXECUTION_DELAY, ETAT, IS_LOCKED,
-         OPERATION_FILE, NBR_ERROR_LINES, USER_BATCH, USER_AD)
-      VALUES
-        (:id, :fileId, 'FILE', :lineCount,
-         SYSDATE,
-         SYSDATE,
-         TO_DATE(:executionDate, 'DD/MM/YYYY HH24:MI:SS'),
-         :lineCount, 'C', 0, 'FILE', 0, 'SOA_test', 'SOA_test')`;
-
-    // 3. Prepare bind parameters object including the new ID
-    const binds = {
+    // 2. Prepare data object for batch_info.txt tracking
+    const dataObj = {
       id: newId,
       fileId: fileId,
-      lineCount: lineCount,
-      executionDate: executionDate
+      operationType: operationType, // e.g. "CREATE_CONTRACT"
+      recordNumber: lineCount,
+      executionDate: executionDate,
+      uploadDate: new Date().toISOString(),
+      etat: "PENDING" // Timer looks for this to process it
     };
 
-    console.debug("[insertInfoFile] Executing SQL with binds:", { sql, binds });
+    // 3. Append to the master tracking text file
+    const trackingFilePath = path.join(process.cwd(), 'batch_info.txt');
+    const lineToWrite = JSON.stringify(dataObj) + '\n';
+    await fs.appendFile(trackingFilePath, lineToWrite, 'utf8');
 
-    // 4. Execute without autoCommit to control the transaction manually
-    await connection.execute(sql, binds);
-    await connection.commit(); // Explicitly commit the transaction
+    // 4. Create operation-specific folder
+    const batchDirectory = path.join(process.cwd(), "batches", operationType);
+    await fs.mkdir(batchDirectory, { recursive: true });
 
-    console.info("[insertInfoFile] Record inserted successfully with ID:", newId);
-    return { success: true, message: "Record inserted successfully", generatedId: newId };
+    // 5. Write the massive JSON payload to `[fileId].txt`
+    const payloadFilePath = path.join(batchDirectory, `${fileId}.txt`);
+    // Alternatively, writing as JSON string for easy parsing later
+    await fs.writeFile(payloadFilePath, JSON.stringify(fileData, null, 2), 'utf8');
+
+    console.info(`[insertInfoFile] Successfully saved bulk data to ${payloadFilePath} and tracked in batch_info.txt with ID:`, newId);
+    return { success: true, message: "Batch payload saved locally and tracked", generatedId: newId, folder: operationType };
 
   } catch (err) {
-    console.error("[insertInfoFile] Insert failed:", err);
-    // Rollback any changes in case of error
-    if (connection) {
-      await connection.rollback();
-    }
+    console.error("[insertInfoFile] Insert to file failed:", err);
     throw err; // Re-throw the error for the caller to handle
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-        console.log("[insertInfoFile] DB connection closed");
-      } catch (err) {
-        console.error("[insertInfoFile] Error closing DB connection:", err);
-      }
-    }
   }
 }
 

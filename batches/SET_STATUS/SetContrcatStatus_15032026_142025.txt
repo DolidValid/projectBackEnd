@@ -1,0 +1,13 @@
+[
+  {
+    "id": "1-2WD1XYWS29514",
+    "fileId": "SetContrcatStatus_15032026_142025",
+    "msisdn": "213550945335",
+    "COID": "",
+    "STATUS": "d",
+    "REASON": "76",
+    "VALIDFROM": "",
+    "TEMPLATENAME": "",
+    "jobId": ""
+  }
+]

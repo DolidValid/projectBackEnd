@@ -1,0 +1,1 @@
+{"id":"2-DYXLGSR","fileId":"SetContrcatStatus_15032026_142025","operationType":"SET_STATUS","recordNumber":1,"executionDate":"12/12/2026 12:12:00","uploadDate":"2026-03-15T13:21:17.143Z","etat":"PENDING"}

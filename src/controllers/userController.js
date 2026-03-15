@@ -1,23 +1,34 @@
 import { insertInfoFile, InsertSet3g, fetchJobs } from "../models/userModel.js";
 
 /**
- * Controller for inserting user info.
+ * Unified Controller for receiving BULK batch files from frontend.
+ * This completely replaces the previous loop methodology.
  */
-async function addInfoFiles(req, res) {
+async function uploadBatchHandler(req, res) {
   try {
-    console.log(req.body);
+    const { executionDate, lineCount, fileId, operationType, data } = req.body;
 
-    const { executionDate, lineCount, fileId } = req.body;
-
-    if (!executionDate || !lineCount || !fileId ) {
-      return res.status(400).json({ error: "All fields are required" });
+    if (!executionDate || !fileId || !operationType || !data) {
+      return res.status(400).json({ error: "Missing required fields (executionDate, fileId, operationType, data)" });
     }
-const result = await insertInfoFile({ executionDate, lineCount, fileId });
-   
+
+    if (!Array.isArray(data) || data.length === 0) {
+      return res.status(400).json({ error: "Data must be a non-empty array of records" });
+    }
+
+    // Call model function to save to the filesystem and track in batch_info.txt
+    const result = await insertInfoFile({ 
+      executionDate, 
+      lineCount: lineCount || data.length, 
+      fileId, 
+      operationType, 
+      fileData: data 
+    });
 
     res.json(result);
   } catch (err) {
-    res.status(500).json({ error: "Failed to insert user" });
+    console.error("uploadBatchHandler failed:", err);
+    res.status(500).json({ error: "Failed to upload batch file locally" });
   }
 }
 
@@ -97,4 +108,4 @@ async function fetchJobsHandler(req, res) {
   }
 }
 
-export { addInfoFiles, active4GHandler, fetchJobsHandler };
+export { uploadBatchHandler, active4GHandler, fetchJobsHandler };
