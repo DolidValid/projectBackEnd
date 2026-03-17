@@ -1,0 +1,13 @@
+[2026-03-17T14:51:00.025Z] 🚀 Starting processCreateContract for File ID: SetContractAndServices_17032026_154944 with 1 records.
+[2026-03-17T14:51:00.027Z] --- Processing Line 1 of 1 ---
+[2026-03-17T14:51:00.030Z] Sending SOAP request to http://127.0.0.1:0170/BusinessProcess/Interfaces/intfContract-service.serviceagent/ContractEndPoint...
+[2026-03-17T14:51:00.031Z] Payload snippet:
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsh="http://www.ooredoo.dz/wsheader" xmlns:set="http://www.ooredoo.dz/ws/contract/setContractAndServices">
+   <soapenv:Header>
+      <wsse:Security soapenv:mustUnderstand="0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <wsse:UsernameToken wsu:Id="UsernameToken-16739353" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-...
+[2026-03-17T14:51:00.245Z] ❌ Line 1 FAILED. Error Message: Request failed with status code 500
+[2026-03-17T14:51:00.247Z] WS Error Status: 500
+[2026-03-17T14:51:00.249Z] WS Error Response Body:
+"<SOAP-ENV:Envelope xmlns:SOAP-ENV=\"http://schemas.xmlsoap.org/soap/envelope/\"><SOAP-ENV:Header/><SOAP-ENV:Body><SOAP-ENV:Fault><faultcode>InvalidParameterException</faultcode><faultstring>Offer 678 is not allowed for template </faultstring><faultactor/><detail><ns:Error xmlns:ns=\"http://www.ooredoo.dz/common/wsexception/v1\" xmlns:ns0=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"><ns:Detail><ns:TransactionId>7adb37ff-7c5d-47bf-b89c-c74d5340db4f</ns:TransactionId><ns:ExceptionDetails><ns:Exception><ns:key>DetailException</ns:key><ns:value>Offer 678 is not allowed for template </ns:value></ns:Exception></ns:ExceptionDetails></ns:Detail></ns:Error></detail></SOAP-ENV:Fault></SOAP-ENV:Body></SOAP-ENV:Envelope>"
+[2026-03-17T14:51:00.251Z] ✅ Finished processCreateContract for File ID: SetContractAndServices_17032026_154944

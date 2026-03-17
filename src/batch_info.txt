@@ -1,2 +1,3 @@
 {"id":"2-99YM9ZL","fileId":"Set3GProfile_15032026_105851","recordNumber":"10","executionDate":"15/03/2026 12:01:00","uploadDate":"2026-03-15T09:59:03.802Z","insertDate":"2026-03-15T09:59:03.802Z"}
 {"id":"2-8C6CCEK","fileId":"SetContractAndServices_15032026_115529","recordNumber":"10","executionDate":"15/03/2026 10:00:00","uploadDate":"2026-03-15T11:01:25.508Z","insertDate":"2026-03-15T11:01:25.509Z"}
+{"id":"2-76LESSB","fileId":"SetContractAndServices_17032026_154944","operationType":"CREATE_CONTRACT","recordNumber":1,"executionDate":"17/03/2026 15:51:00","uploadDate":"2026-03-17T14:50:01.996Z","etat":"PROCESSED"}
