@@ -1,8 +1,8 @@
 import { insertInfoFile, InsertSet3g, fetchJobs } from "../models/userModel.js";
+import { getResultBatch } from "../services/resultBatchService.js";
 
 /**
- * Unified Controller for receiving BULK batch files from frontend.
- * This completely replaces the previous loop methodology.
+ * Controller for receiving BULK batch files from frontend.
  */
 async function uploadBatchHandler(req, res) {
   try {
@@ -33,7 +33,7 @@ async function uploadBatchHandler(req, res) {
 }
 
 /**
- * Controller for active4G API. ---------------------------------------------------------------
+ * Controller for active4G API.
  */
 async function active4GHandler(req, res) {
   try {
@@ -55,9 +55,7 @@ async function active4GHandler(req, res) {
 
     // Basic validation
     if ( !msisdn || !action ) {
-      const a = res.status(400).json({ error: "Missing required fields" });
-      
-      return a;
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
     // Call model function
@@ -84,7 +82,7 @@ async function active4GHandler(req, res) {
 }
 
 /**
- * Controller for fetching Jobs.---------------------------------------------------------------
+ * Controller for fetching Jobs.
  */
 async function fetchJobsHandler(req, res) {
   try {
@@ -108,4 +106,23 @@ async function fetchJobsHandler(req, res) {
   }
 }
 
-export { uploadBatchHandler, active4GHandler, fetchJobsHandler };
+/**
+ * Controller for fetching batch results from ESB_LOG.
+ */
+async function resultBatchHandler(req, res) {
+  try {
+    const { fileId } = req.body;
+
+    if (!fileId) {
+      return res.status(400).json({ error: "fileId is required" });
+    }
+
+    const results = await getResultBatch(fileId);
+    res.json(results);
+  } catch (err) {
+    console.error("resultBatchHandler failed:", err);
+    res.status(500).json({ error: err.message || "Failed to fetch batch results" });
+  }
+}
+
+export { uploadBatchHandler, active4GHandler, fetchJobsHandler, resultBatchHandler };

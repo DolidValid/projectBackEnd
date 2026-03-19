@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { uploadBatchHandler, active4GHandler,fetchJobsHandler } from "../controllers/userController.js";
+import { uploadBatchHandler, active4GHandler, fetchJobsHandler, resultBatchHandler } from "../controllers/userController.js";
 
 /**
  * Express router instance for handling user-related routes.
@@ -14,6 +14,9 @@ router.post("/upload-batch", uploadBatchHandler);
 router.post("/active4G", active4GHandler);
 
 // New search API
-router.post("/Search",fetchJobsHandler );
+router.post("/Search", fetchJobsHandler);
+
+// New resultBatch API for ESB_LOG results
+router.post("/resultBatch", resultBatchHandler);
 
 export default router;

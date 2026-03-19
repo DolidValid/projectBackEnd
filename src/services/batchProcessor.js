@@ -5,6 +5,83 @@ import axios from 'axios';
 
 const TRACKING_FILE = path.join(process.cwd(), 'batch_info.txt');
 
+// ============================================================
+// THROTTLE / TPS CONFIGURATION
+// ============================================================
+// Adjust these values to control the rate of outgoing SOAP calls.
+// - TPS: Target transactions-per-second (e.g. 5 = max 5 calls/sec)
+// - DELAY_BETWEEN_CALLS_MS: Computed from TPS (1000/TPS ms between calls)
+// - BURST_SIZE: How many calls to send before pausing (set to 1 for strict throttle)
+// - TIMEOUT_MS: Per-request timeout so a slow call doesn't block the queue
+// ============================================================
+const THROTTLE_CONFIG = {
+  TPS: parseInt(process.env.BATCH_TPS) || 5,              // 5 calls per second by default
+  BURST_SIZE: parseInt(process.env.BATCH_BURST) || 1,      // 1 = strictly sequential
+  TIMEOUT_MS: parseInt(process.env.BATCH_TIMEOUT) || 30000, // 30s per request
+};
+THROTTLE_CONFIG.DELAY_BETWEEN_CALLS_MS = Math.ceil(1000 / THROTTLE_CONFIG.TPS);
+
+console.log(`[BatchProcessor] Throttle config: ${THROTTLE_CONFIG.TPS} TPS, ${THROTTLE_CONFIG.DELAY_BETWEEN_CALLS_MS}ms delay, burst=${THROTTLE_CONFIG.BURST_SIZE}, timeout=${THROTTLE_CONFIG.TIMEOUT_MS}ms`);
+
+// --- Helpers ---
+
+/** Sleep for given milliseconds */
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Extract TransactionId from a SOAP XML response body.
+ * Works for both success and fault responses.
+ * Looks for <ns:TransactionId>...</ns:TransactionId> or <TransactionId>...</TransactionId>
+ */
+function extractTransactionId(xmlString) {
+  if (!xmlString || typeof xmlString !== 'string') return null;
+  // Try namespaced version first: <ns:TransactionId>...
+  let match = xmlString.match(/<[^>]*?TransactionId[^>]*?>([^<]+)<\/[^>]*?TransactionId>/i);
+  if (match && match[1]) return match[1].trim();
+  return null;
+}
+
+/**
+ * Update the batch_info.txt tracking file for a specific fileId.
+ * Merges new fields (like transactionIds) into the matching JSON line.
+ */
+async function updateBatchTracking(fileId, updates) {
+  try {
+    let fileContent;
+    try {
+      fileContent = await fs.readFile(TRACKING_FILE, 'utf8');
+    } catch (err) {
+      if (err.code === 'ENOENT') return;
+      throw err;
+    }
+
+    const lines = fileContent.trim().split('\n');
+    const updatedLines = [];
+    let changed = false;
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const batch = JSON.parse(line);
+        if (batch.fileId === fileId) {
+          // Merge all update fields into this batch line
+          Object.assign(batch, updates);
+          changed = true;
+        }
+        updatedLines.push(JSON.stringify(batch));
+      } catch {
+        updatedLines.push(line); // keep corrupted lines as-is
+      }
+    }
+
+    if (changed) {
+      await fs.writeFile(TRACKING_FILE, updatedLines.join('\n') + '\n', 'utf8');
+    }
+  } catch (err) {
+    console.error(`[BatchProcessor] Error updating tracking for ${fileId}:`, err.message);
+  }
+}
+
 // --- Processors ---
 
 async function processCreateContract(fileId, filePath, dataArray) {
@@ -150,12 +227,22 @@ async function processCreateContract(fileId, filePath, dataArray) {
   };
 
   await logMessage(`🚀 Starting processCreateContract for File ID: ${fileId} with ${dataArray.length} records.`);
+  await logMessage(`⚙️ Throttle: ${THROTTLE_CONFIG.TPS} TPS (${THROTTLE_CONFIG.DELAY_BETWEEN_CALLS_MS}ms between calls)`);
+
+  // Counters for execution summary
+  let successCount = 0;
+  let failCount = 0;
+  const startTime = Date.now();
 
   for (let i = 0; i < dataArray.length; i++) {
     const record = dataArray[i];
     await logMessage(`--- Processing Line ${i+1} of ${dataArray.length} ---`);
     const soapPayload = generateSoapRequest(record);
     
+    let transactionId = null;
+    let lineStatus = 'FAILED';
+    let errorMessage = null;
+
     try {
       await logMessage(`Sending SOAP request to ${endpointUrl}...`);
       await logMessage(`Payload snippet:\n${soapPayload.substring(0, 500)}...`);
@@ -164,22 +251,80 @@ async function processCreateContract(fileId, filePath, dataArray) {
         headers: {
           'Content-Type': 'text/xml;charset=UTF-8',
           'SOAPAction': '"/BusinessProcess/Interfaces/intfContract-service.serviceagent/ContractEndPoint/SetContractAndServicesOperation"'
-        }
+        },
+        timeout: THROTTLE_CONFIG.TIMEOUT_MS
       });
       
+      // Extract TransactionId from success response
+      const responseBody = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+      transactionId = extractTransactionId(responseBody);
+      lineStatus = 'SUCCESS';
+      successCount++;
+
       await logMessage(`✅ Line ${i+1} SUCCESS. WS Response Status: ${response.status}`);
-      await logMessage(`WS Response Body:\n${JSON.stringify(response.data, null, 2)}`);
+      await logMessage(`📋 TransactionId: ${transactionId || 'N/A'}`);
+      await logMessage(`WS Response Body:\n${responseBody}`);
       
     } catch (err) {
+      failCount++;
+      errorMessage = err.message;
       await logMessage(`❌ Line ${i+1} FAILED. Error Message: ${err.message}`);
       if (err.response) {
+        // Extract TransactionId even from error/fault responses
+        const errBody = typeof err.response.data === 'string' ? err.response.data : JSON.stringify(err.response.data);
+        transactionId = extractTransactionId(errBody);
         await logMessage(`WS Error Status: ${err.response.status}`);
-        await logMessage(`WS Error Response Body:\n${JSON.stringify(err.response.data, null, 2)}`);
+        await logMessage(`📋 TransactionId (from fault): ${transactionId || 'N/A'}`);
+        await logMessage(`WS Error Response Body:\n${errBody}`);
       }
+    }
+
+    // Update the record directly in dataArray with transactionId and status
+    dataArray[i].transactionId = transactionId || null;
+    dataArray[i].wsStatus = lineStatus;
+    if (errorMessage) {
+      dataArray[i].wsError = errorMessage;
+    }
+
+    // Write updated dataArray back to the batch payload file after EACH line
+    // So if the server crashes, we don't lose progress — each line's transactionId is persisted
+    try {
+      await fs.writeFile(filePath, JSON.stringify(dataArray, null, 2), 'utf8');
+      await logMessage(`💾 Batch file updated: line ${i+1} → transactionId=${transactionId || 'N/A'}, status=${lineStatus}`);
+    } catch (writeErr) {
+      await logMessage(`⚠️ Failed to write batch file after line ${i+1}: ${writeErr.message}`);
+    }
+
+    // Update batch_info.txt progress
+    await updateBatchTracking(fileId, {
+      progress: `${i + 1}/${dataArray.length}`,
+      etat: 'IN_PROGRESS'
+    });
+
+    // Throttle: wait between calls to respect TPS limit
+    if (i < dataArray.length - 1) {
+      await sleep(THROTTLE_CONFIG.DELAY_BETWEEN_CALLS_MS);
     }
   }
 
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+  const actualTps = (dataArray.length / parseFloat(elapsed)).toFixed(2);
+
+  await logMessage(`📊 Execution summary: ${successCount} success, ${failCount} failed, ${elapsed}s elapsed, actual TPS: ${actualTps}`);
   await logMessage(`✅ Finished processCreateContract for File ID: ${fileId}`);
+
+  // Final update: mark batch_info.txt as PROCESSED with summary
+  await updateBatchTracking(fileId, {
+    progress: `${dataArray.length}/${dataArray.length}`,
+    etat: 'PROCESSED',
+    executionSummary: {
+      total: dataArray.length,
+      success: successCount,
+      failed: failCount,
+      elapsedSeconds: parseFloat(elapsed),
+      actualTps: parseFloat(actualTps)
+    }
+  });
 }
 
 async function processSetStatus(fileId, filePath, dataArray) {
@@ -283,14 +428,16 @@ async function checkPendingBatches() {
                 console.warn(`[BatchProcessor] ⚠️ Unknown operationType: ${batch.operationType}`);
             }
 
-            // 5. Mark as processed!
-            batch.etat = 'PROCESSED';
+            // 5. Mark as processed - the processor itself updates batch_info.txt
+            //    with transactionIds and etat='PROCESSED' at the end.
+            //    We still set hasChanges to ensure we save any other updates.
             hasChanges = true;
 
           } catch (processErr) {
             console.error(`[BatchProcessor] ❌ Error executing batch ${batch.fileId}:`, processErr);
-            // Optionally set status to ERROR, but for now we leave it PENDING maybe to retry?
-            // Next time it will try again. Or you can add batch.etat = 'ERROR'
+            batch.etat = 'ERROR';
+            batch.errorMessage = processErr.message;
+            hasChanges = true;
           }
         }
 
