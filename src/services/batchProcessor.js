@@ -366,9 +366,6 @@ async function checkPendingBatches() {
     }
 
     const lines = fileContent.trim().split('\n');
-    let hasChanges = false;
-    const updatedLines = [];
-
     const now = new Date();
 
     for (const line of lines) {
@@ -380,34 +377,41 @@ async function checkPendingBatches() {
         // Parse DD/MM/YYYY HH24:MI:SS or ISO String
         // InfoFile.jsx currently sends: DD/MM/YYYY HH:mm:ss
         let executionDate;
-        if (batch.executionDate.includes('/')) {
+        if (batch.executionDate && batch.executionDate.includes('/')) {
             const [datePart, timePart] = batch.executionDate.split(' ');
             const [day, month, year] = datePart.split('/');
             executionDate = new Date(`${year}-${month}-${day}T${timePart}`);
-        } else {
+        } else if (batch.executionDate) {
             // ISO format fallback
             executionDate = new Date(batch.executionDate);
+        } else {
+            // Default to past if missing date
+            executionDate = now;
         }
 
         // 2. Check if we should process it
         if (batch.etat === 'PENDING' && now >= executionDate) {
           console.log(`[BatchProcessor] 👉 Found pending batch ready for execution: ${batch.fileId} (${batch.operationType})`);
 
-          // 3. Locate the file payload
-          const batchDirectory = path.join(process.cwd(), "batches", batch.operationType);
-          const payloadFilePath = path.join(batchDirectory, `${batch.fileId}.txt`);
-          
-          let payloadContent = "[]";
-          try {
-              payloadContent = await fs.readFile(payloadFilePath, 'utf8');
-          } catch (e) {
-              console.error(`[BatchProcessor] ❌ Payload file missing for ${batch.fileId} at ${payloadFilePath}`);
-          }
-          
-          const dataArray = JSON.parse(payloadContent);
+          // Immediately update state to IN_PROGRESS so it won't be picked up again
+          await updateBatchTracking(batch.fileId, { etat: 'IN_PROGRESS' });
 
-          // 4. Route to specific processor
           try {
+            // 3. Locate the file payload
+            const batchDirectory = path.join(process.cwd(), "batches", batch.operationType);
+            const payloadFilePath = path.join(batchDirectory, `${batch.fileId}.txt`);
+            
+            let payloadContent;
+            try {
+                payloadContent = await fs.readFile(payloadFilePath, 'utf8');
+            } catch (e) {
+                console.error(`[BatchProcessor] ❌ Payload file missing for ${batch.fileId} at ${payloadFilePath}`);
+                throw new Error(`Payload file missing: ${batch.fileId}`);
+            }
+            
+            const dataArray = JSON.parse(payloadContent);
+
+            // 4. Route to specific processor
             switch (batch.operationType) {
               case "CREATE_CONTRACT":
                 await processCreateContract(batch.fileId, payloadFilePath, dataArray);
@@ -426,34 +430,22 @@ async function checkPendingBatches() {
                 break;
               default:
                 console.warn(`[BatchProcessor] ⚠️ Unknown operationType: ${batch.operationType}`);
+                throw new Error(`Unknown operationType: ${batch.operationType}`);
             }
-
-            // 5. Mark as processed - the processor itself updates batch_info.txt
-            //    with transactionIds and etat='PROCESSED' at the end.
-            //    We still set hasChanges to ensure we save any other updates.
-            hasChanges = true;
 
           } catch (processErr) {
             console.error(`[BatchProcessor] ❌ Error executing batch ${batch.fileId}:`, processErr);
-            batch.etat = 'ERROR';
-            batch.errorMessage = processErr.message;
-            hasChanges = true;
+            // On error, properly save status to FILE tracking using updateBatchTracking
+            await updateBatchTracking(batch.fileId, {
+              etat: 'ERROR',
+              errorMessage: processErr.message
+            });
           }
         }
 
-        updatedLines.push(JSON.stringify(batch));
       } catch (parseErr) {
         console.error("[BatchProcessor] Error parsing line in batch_info.txt:", parseErr);
-        // keep line exactly as is if corrupted
-        updatedLines.push(line);
       }
-    }
-
-    // 6. Save updated tracking file safely overwriting the old one if needed
-    if (hasChanges) {
-      const newFileContent = updatedLines.join('\n') + '\n';
-      await fs.writeFile(TRACKING_FILE, newFileContent, 'utf8');
-      console.log(`[BatchProcessor] ✅ batch_info.txt updated successfully.`);
     }
 
   } catch (err) {

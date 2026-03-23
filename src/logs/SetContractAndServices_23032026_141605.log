@@ -1,0 +1,31 @@
+[2026-03-23T13:17:00.031Z] 🚀 Starting processCreateContract for File ID: SetContractAndServices_23032026_141605 with 3 records.
+[2026-03-23T13:17:00.033Z] ⚙️ Throttle: 5 TPS (200ms between calls)
+[2026-03-23T13:17:00.035Z] --- Processing Line 1 of 3 ---
+[2026-03-23T13:17:00.038Z] Sending SOAP request to http://127.0.0.1:0170/BusinessProcess/Interfaces/intfContract-service.serviceagent/ContractEndPoint...
+[2026-03-23T13:17:00.040Z] Payload snippet:
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsh="http://www.ooredoo.dz/wsheader" xmlns:set="http://www.ooredoo.dz/ws/contract/setContractAndServices">
+   <soapenv:Header>
+      <wsse:Security soapenv:mustUnderstand="0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <wsse:UsernameToken wsu:Id="UsernameToken-16739353" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-...
+[2026-03-23T13:17:00.060Z] ❌ Line 1 FAILED. Error Message: connect ECONNREFUSED 127.0.0.1:170
+[2026-03-23T13:17:00.064Z] 💾 Batch file updated: line 1 → transactionId=N/A, status=FAILED
+[2026-03-23T13:17:00.276Z] --- Processing Line 2 of 3 ---
+[2026-03-23T13:17:00.279Z] Sending SOAP request to http://127.0.0.1:0170/BusinessProcess/Interfaces/intfContract-service.serviceagent/ContractEndPoint...
+[2026-03-23T13:17:00.281Z] Payload snippet:
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsh="http://www.ooredoo.dz/wsheader" xmlns:set="http://www.ooredoo.dz/ws/contract/setContractAndServices">
+   <soapenv:Header>
+      <wsse:Security soapenv:mustUnderstand="0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <wsse:UsernameToken wsu:Id="UsernameToken-16739353" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-...
+[2026-03-23T13:17:00.286Z] ❌ Line 2 FAILED. Error Message: connect ECONNREFUSED 127.0.0.1:170
+[2026-03-23T13:17:00.289Z] 💾 Batch file updated: line 2 → transactionId=N/A, status=FAILED
+[2026-03-23T13:17:00.504Z] --- Processing Line 3 of 3 ---
+[2026-03-23T13:17:00.507Z] Sending SOAP request to http://127.0.0.1:0170/BusinessProcess/Interfaces/intfContract-service.serviceagent/ContractEndPoint...
+[2026-03-23T13:17:00.509Z] Payload snippet:
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsh="http://www.ooredoo.dz/wsheader" xmlns:set="http://www.ooredoo.dz/ws/contract/setContractAndServices">
+   <soapenv:Header>
+      <wsse:Security soapenv:mustUnderstand="0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <wsse:UsernameToken wsu:Id="UsernameToken-16739353" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-...
+[2026-03-23T13:17:00.513Z] ❌ Line 3 FAILED. Error Message: connect ECONNREFUSED 127.0.0.1:170
+[2026-03-23T13:17:00.516Z] 💾 Batch file updated: line 3 → transactionId=N/A, status=FAILED
+[2026-03-23T13:17:00.522Z] 📊 Execution summary: 0 success, 3 failed, 0.48s elapsed, actual TPS: 6.25
+[2026-03-23T13:17:00.524Z] ✅ Finished processCreateContract for File ID: SetContractAndServices_23032026_141605

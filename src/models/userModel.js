@@ -234,4 +234,80 @@ async function fetchJobs({ fileId = null, infoFileId = null, msisdn = null }) {
 
 
 
-export { fetchJobs,insertInfoFile, InsertSet3g };
+
+
+
+export async function getBatchHistory() {
+  const trackingFilePath = path.join(process.cwd(), 'src', 'batch_info.txt'); // Adjusted to 'src' based on where I found the file initially, or maybe just check if it exists in src or cwd
+  // Let's actually check process.cwd. The original code does `path.join(process.cwd(), 'batch_info.txt')`. Let's stick to their pattern but also try checking if `batch_info.txt` is in src.
+  let validPath = path.join(process.cwd(), 'batch_info.txt');
+  try { await fs.access(validPath); } catch (e) { validPath = path.join(process.cwd(), 'src', 'batch_info.txt'); }
+  
+  try {
+    const data = await fs.readFile(validPath, 'utf8');
+    const lines = data.split('\n').filter(line => line.trim() !== '');
+    const history = lines.map(line => {
+      try { return JSON.parse(line); } catch(e) { return null; }
+    }).filter(item => item !== null);
+    
+    // Filter by last month
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    
+    return history.filter(item => {
+      if (!item.uploadDate) return false;
+      const uploadDate = new Date(item.uploadDate);
+      return uploadDate >= oneMonthAgo;
+    });
+  } catch(err) {
+    if(err.code === 'ENOENT') return [];
+    throw err;
+  }
+}
+
+export async function deleteBatchHistory(id) {
+  let validPath = path.join(process.cwd(), 'batch_info.txt');
+  try { await fs.access(validPath); } catch (e) { validPath = path.join(process.cwd(), 'src', 'batch_info.txt'); }
+  
+  try {
+    const data = await fs.readFile(validPath, 'utf8');
+    const lines = data.split('\n').filter(line => line.trim() !== '');
+    
+    const newLines = [];
+    let deletedItem = null;
+    
+    for(const line of lines) {
+      try {
+        const item = JSON.parse(line);
+        if(item.id === id) {
+          deletedItem = item;
+        } else {
+          newLines.push(line);
+        }
+      } catch(e) {
+         newLines.push(line);
+      }
+    }
+    
+    if(deletedItem) {
+      await fs.writeFile(validPath, newLines.join('\n') + (newLines.length > 0 ? '\n' : ''), 'utf8');
+      
+      if(deletedItem.operationType && deletedItem.fileId) {
+        let payloadFilePath = path.join(process.cwd(), "batches", deletedItem.operationType, `${deletedItem.fileId}.txt`);
+        try { await fs.access(payloadFilePath); } catch (e) { payloadFilePath = path.join(process.cwd(), 'src', "batches", deletedItem.operationType, `${deletedItem.fileId}.txt`); }
+        try {
+          await fs.unlink(payloadFilePath);
+        } catch(e) {
+          console.error("Failed to delete payload file:", e);
+        }
+      }
+      return { success: true };
+    } else {
+       return { success: false, message: "Batch not found" };
+    }
+  } catch(err) {
+    throw err;
+  }
+}
+
+export { fetchJobs, insertInfoFile, InsertSet3g };

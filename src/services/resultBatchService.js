@@ -14,8 +14,8 @@ const TRACKING_FILE = path.join(process.cwd(), 'batch_info.txt');
  *    using those transactionIds
  * 5. Returns the combined results
  */
-async function getResultBatch(fileId) {
-  console.info(`[resultBatch] Starting for fileId: ${fileId}`);
+async function getResultBatch({ fileId, searchMsisdn, searchTransactionId, page = 1, limit = 200 }) {
+  console.info(`[resultBatch] Starting for fileId: ${fileId}, page: ${page}, limit: ${limit}`);
 
   // ───────────────────────────────────────────────
   // STEP 1: Find the batch entry in batch_info.txt
@@ -66,20 +66,48 @@ async function getResultBatch(fileId) {
     throw new Error(`Could not read batch payload file at ${payloadFilePath}: ${err.message}`);
   }
 
-  // Extract transaction IDs from the batch records
-  const transactionIds = dataArray
+  // Apply filters
+  let filteredDataArray = dataArray;
+  
+  if (searchMsisdn) {
+    filteredDataArray = filteredDataArray.filter(record => 
+      (record.msisdn || record.MSISDN || '').includes(searchMsisdn)
+    );
+  }
+  
+  if (searchTransactionId) {
+    filteredDataArray = filteredDataArray.filter(record => 
+      (record.transactionId || '').includes(searchTransactionId)
+    );
+  }
+
+  // Extract transaction IDs from the FILTERED batch records
+  const allTransactionIds = filteredDataArray
     .map(record => record.transactionId)
     .filter(id => id && id.trim() !== '');
 
-  if (transactionIds.length === 0) {
+  const totalFilteredRecords = allTransactionIds.length;
+  
+  // Apply pagination
+  const offset = (page - 1) * limit;
+  const transactionIdsToFetch = allTransactionIds.slice(offset, offset + limit);
+
+  if (transactionIdsToFetch.length === 0) {
     return {
       batchInfo: batchEntry,
-      message: 'No transaction IDs found in the batch file. The batch may not have been processed yet.',
-      transactionResults: []
+      message: 'No transaction IDs found in the batch file or matched search criteria.',
+      transactionResults: [],
+      pagination: {
+        page,
+        limit,
+        totalRecords: totalFilteredRecords,
+        totalPages: Math.ceil(totalFilteredRecords / limit)
+      }
     };
   }
 
-  console.info(`[resultBatch] Found ${transactionIds.length} transaction IDs to query`);
+  console.info(`[resultBatch] Found ${totalFilteredRecords} matching transaction IDs, querying ${transactionIdsToFetch.length} for page ${page}`);
+
 
   // ───────────────────────────────────────────────
   // STEP 3: Query ESB_LOG Oracle DB for results
@@ -90,10 +118,9 @@ async function getResultBatch(fileId) {
     console.log('[resultBatch] ESB_LOG DB connection established');
 
     // Build dynamic IN clause with bind variables
-    // Oracle bind variables: :t0, :t1, :t2, ...
-    const bindNames = transactionIds.map((_, i) => `:t${i}`);
+    const bindNames = transactionIdsToFetch.map((_, i) => `:t${i}`);
     const binds = {};
-    transactionIds.forEach((id, i) => {
+    transactionIdsToFetch.forEach((id, i) => {
       binds[`t${i}`] = id;
     });
 
@@ -111,7 +138,7 @@ async function getResultBatch(fileId) {
       WHERE TRANSACTION_ID IN (${bindNames.join(', ')})
     `;
 
-    console.debug('[resultBatch] Executing SQL with', transactionIds.length, 'bind variables');
+    console.debug('[resultBatch] Executing SQL with', transactionIdsToFetch.length, 'bind variables');
 
     const result = await connection.execute(sql, binds, { 
       outFormat: 4002 // oracledb.OUT_FORMAT_OBJECT
@@ -119,8 +146,11 @@ async function getResultBatch(fileId) {
 
     console.info(`[resultBatch] Query returned ${result.rows.length} rows`);
 
+    // Slice the subset of filtered data array specifically for this page
+    const pageDataArray = filteredDataArray.slice(offset, offset + limit);
+
     // Merge batch record data with Oracle results for a complete picture
-    const mergedResults = dataArray.map(record => {
+    const mergedResults = pageDataArray.map(record => {
       const oracleResult = result.rows.find(
         row => row.TRANSACTION_ID === record.transactionId
       );
@@ -144,10 +174,13 @@ async function getResultBatch(fileId) {
 
     return {
       batchInfo: batchEntry,
-      totalRecords: dataArray.length,
-      transactionIdsFound: transactionIds.length,
-      oracleResultsCount: result.rows.length,
-      transactionResults: mergedResults
+      transactionResults: mergedResults,
+      pagination: {
+        page,
+        limit,
+        totalRecords: totalFilteredRecords,
+        totalPages: Math.ceil(totalFilteredRecords / limit)
+      }
     };
 
   } catch (err) {

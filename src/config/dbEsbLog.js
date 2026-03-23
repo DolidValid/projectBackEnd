@@ -11,9 +11,9 @@ import oracledb from "oracledb";
 // ============================================================
 
 const esbLogDbConfig = {
-  user: "YOUR_ESB_LOG_USER",         // ← Replace with your ESB_LOG username
-  password: "YOUR_ESB_LOG_PASSWORD", // ← Replace with your ESB_LOG password
-  connectString: "YOUR_HOST:YOUR_PORT/YOUR_SERVICE_NAME" // ← Replace with your ESB_LOG connect string
+  user: "ESB_LOG",         // ← Replace with your ESB_LOG username
+  password: "l0$!13f", // ← Replace with your ESB_LOG password
+  connectString: "salesbodbp-scan:1521/SRV_TIBCOPR_LB" // ← Replace with your ESB_LOG connect string
 };
 
 async function getEsbLogConnection() {

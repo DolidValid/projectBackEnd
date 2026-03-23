@@ -1,4 +1,4 @@
-import { insertInfoFile, InsertSet3g, fetchJobs } from "../models/userModel.js";
+import { insertInfoFile, InsertSet3g, fetchJobs, getBatchHistory, deleteBatchHistory } from "../models/userModel.js";
 import { getResultBatch } from "../services/resultBatchService.js";
 
 /**
@@ -122,6 +122,34 @@ async function resultBatchHandler(req, res) {
   } catch (err) {
     console.error("resultBatchHandler failed:", err);
     res.status(500).json({ error: err.message || "Failed to fetch batch results" });
+  }
+}
+
+
+
+
+export async function getHistoryHandler(req, res) {
+  try {
+    const history = await getBatchHistory();
+    res.json(history);
+  } catch(err) {
+    console.error("getHistoryHandler failed:", err);
+    res.status(500).json({ error: "Failed to fetch history" });
+  }
+}
+
+export async function deleteHistoryHandler(req, res) {
+  try {
+    const { id } = req.params;
+    const result = await deleteBatchHistory(id);
+    if(result.success) {
+      res.json({ message: "Deleted successfully" });
+    } else {
+      res.status(404).json({ error: result.message });
+    }
+  } catch(err) {
+      console.error("deleteHistoryHandler failed:", err);
+      res.status(500).json({ error: "Failed to delete from history" });
   }
 }
 
