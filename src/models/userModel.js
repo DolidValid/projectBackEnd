@@ -153,83 +153,6 @@ async function InsertSet3g({
 
 
 
-async function fetchJobs({ fileId = null, infoFileId = null, msisdn = null }) {
-  let connection;
-  console.info("[fetchJobs] Starting fetch with params:", { fileId, infoFileId, msisdn });
-
-  try {
-    connection = await getConnection();
-    console.log("[fetchJobs] DB connection established");
-
-    let sql = "";
-    let binds = {};
-
-    if (fileId) {
-      // CASE A: direct fileId
-      sql = `
-        SELECT J.TRANSACTIONID, J.MSISDN, J.STATUS
-        FROM JOBS J
-        WHERE J.TRANSACTIONID IN (
-          SELECT S.JOB_ID
-          FROM SET_3G_PROFILE_BATCH S
-          WHERE S.FILE_ID = :fileId
-        )
-      `;
-      binds = { fileId };
-
-    } else if (infoFileId) {
-      // CASE B: infoFileId → lookup file_name from INFO_FILE
-      sql = `
-        SELECT J.TRANSACTIONID, J.MSISDN, J.STATUS
-        FROM JOBS J
-        WHERE J.TRANSACTIONID IN (
-          SELECT S.JOB_ID
-          FROM SET_3G_PROFILE_BATCH S
-          WHERE S.FILE_ID IN (
-            SELECT I.FILE_NAME
-            FROM INFO_FILE I
-            WHERE I.ID = :infoFileId
-          )
-        )
-      `;
-      binds = { infoFileId };
-
-    } else if (msisdn) {
-      // CASE C: direct msisdn search
-      sql = `
-        SELECT J.TRANSACTIONID, J.CREATIONDATE,J.MSISDN, J.STATUS,J.FILE_LINE_ID
-        FROM JOBS J
-        WHERE J.MSISDN = :msisdn
-      `;
-      binds = { msisdn };
-
-    } else {
-      throw new Error("At least one parameter (fileId, infoFileId, or msisdn) must be provided ❗");
-    }
-
-    console.debug("[fetchJobs] Executing SQL:", sql);
-    console.debug("[fetchJobs] With binds:", binds);
-
-    const result = await connection.execute(sql, binds, { outFormat: 4002 }); 
-    // 4002 = oracledb.OUT_FORMAT_OBJECT → rows as array of objects
-
-    console.info("[fetchJobs] Query executed successfully, rows:", result.rows.length);
-    
-    return result.rows; // Tableau (array of rows)
-  } catch (err) {
-    console.error("[fetchJobs] Query failed:", err);
-    throw err;
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-        console.log("[fetchJobs] DB connection closed");
-      } catch (err) {
-        console.error("[fetchJobs] Error closing DB connection:", err);
-      }
-    }
-  }
-}
 
 
 
@@ -310,4 +233,4 @@ export async function deleteBatchHistory(id) {
   }
 }
 
-export { fetchJobs, insertInfoFile, InsertSet3g };
+export { insertInfoFile, InsertSet3g };

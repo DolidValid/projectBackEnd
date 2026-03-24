@@ -1,0 +1,43 @@
+[2026-03-24T10:52:00.036Z] 🚀 Starting processCreateContract for File ID: SetContractAndServices_24032026_115030 with 3 records.
+[2026-03-24T10:52:00.038Z] ⚙️ Throttle: 5 TPS (200ms between calls)
+[2026-03-24T10:52:00.040Z] --- Processing Line 1 of 3 ---
+[2026-03-24T10:52:00.043Z] Sending SOAP request to http://127.0.0.1:0170/BusinessProcess/Interfaces/intfContract-service.serviceagent/ContractEndPoint...
+[2026-03-24T10:52:00.045Z] Payload snippet:
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsh="http://www.ooredoo.dz/wsheader" xmlns:set="http://www.ooredoo.dz/ws/contract/setContractAndServices">
+   <soapenv:Header>
+      <wsse:Security soapenv:mustUnderstand="0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <wsse:UsernameToken wsu:Id="UsernameToken-16739353" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-...
+[2026-03-24T10:52:00.235Z] ❌ Line 1 FAILED. Error Message: Request failed with status code 500
+[2026-03-24T10:52:00.238Z] WS Error Status: 500
+[2026-03-24T10:52:00.240Z] 📋 TransactionId (from fault): 40583da6-b9b6-4f3e-b4f5-d9d960e45925
+[2026-03-24T10:52:00.241Z] WS Error Response Body:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Header/><SOAP-ENV:Body><SOAP-ENV:Fault><faultcode>InvalidParameterException</faultcode><faultstring>Offer 678 is not allowed for template </faultstring><faultactor/><detail><ns:Error xmlns:ns="http://www.ooredoo.dz/common/wsexception/v1" xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><ns:Detail><ns:TransactionId>40583da6-b9b6-4f3e-b4f5-d9d960e45925</ns:TransactionId><ns:ExceptionDetails><ns:Exception><ns:key>DetailException</ns:key><ns:value>Offer 678 is not allowed for template </ns:value></ns:Exception></ns:ExceptionDetails></ns:Detail></ns:Error></detail></SOAP-ENV:Fault></SOAP-ENV:Body></SOAP-ENV:Envelope>
+[2026-03-24T10:52:00.245Z] 💾 Batch file updated: line 1 → transactionId=40583da6-b9b6-4f3e-b4f5-d9d960e45925, status=FAILED
+[2026-03-24T10:52:00.459Z] --- Processing Line 2 of 3 ---
+[2026-03-24T10:52:00.462Z] Sending SOAP request to http://127.0.0.1:0170/BusinessProcess/Interfaces/intfContract-service.serviceagent/ContractEndPoint...
+[2026-03-24T10:52:00.464Z] Payload snippet:
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsh="http://www.ooredoo.dz/wsheader" xmlns:set="http://www.ooredoo.dz/ws/contract/setContractAndServices">
+   <soapenv:Header>
+      <wsse:Security soapenv:mustUnderstand="0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <wsse:UsernameToken wsu:Id="UsernameToken-16739353" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-...
+[2026-03-24T10:52:00.518Z] ❌ Line 2 FAILED. Error Message: Request failed with status code 500
+[2026-03-24T10:52:00.520Z] WS Error Status: 500
+[2026-03-24T10:52:00.522Z] 📋 TransactionId (from fault): fc616ea0-cbd2-4f3e-95e4-3d6c010a9343
+[2026-03-24T10:52:00.523Z] WS Error Response Body:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Header/><SOAP-ENV:Body><SOAP-ENV:Fault><faultcode>InvalidParameterException</faultcode><faultstring>Offer 678 is not allowed for template </faultstring><faultactor/><detail><ns:Error xmlns:ns="http://www.ooredoo.dz/common/wsexception/v1" xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><ns:Detail><ns:TransactionId>fc616ea0-cbd2-4f3e-95e4-3d6c010a9343</ns:TransactionId><ns:ExceptionDetails><ns:Exception><ns:key>DetailException</ns:key><ns:value>Offer 678 is not allowed for template </ns:value></ns:Exception></ns:ExceptionDetails></ns:Detail></ns:Error></detail></SOAP-ENV:Fault></SOAP-ENV:Body></SOAP-ENV:Envelope>
+[2026-03-24T10:52:00.527Z] 💾 Batch file updated: line 2 → transactionId=fc616ea0-cbd2-4f3e-95e4-3d6c010a9343, status=FAILED
+[2026-03-24T10:52:00.741Z] --- Processing Line 3 of 3 ---
+[2026-03-24T10:52:00.743Z] Sending SOAP request to http://127.0.0.1:0170/BusinessProcess/Interfaces/intfContract-service.serviceagent/ContractEndPoint...
+[2026-03-24T10:52:00.745Z] Payload snippet:
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsh="http://www.ooredoo.dz/wsheader" xmlns:set="http://www.ooredoo.dz/ws/contract/setContractAndServices">
+   <soapenv:Header>
+      <wsse:Security soapenv:mustUnderstand="0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <wsse:UsernameToken wsu:Id="UsernameToken-16739353" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-...
+[2026-03-24T10:52:00.919Z] ❌ Line 3 FAILED. Error Message: Request failed with status code 500
+[2026-03-24T10:52:00.921Z] WS Error Status: 500
+[2026-03-24T10:52:00.922Z] 📋 TransactionId (from fault): ca3c37d7-739d-4d81-be09-9b46cebb4197
+[2026-03-24T10:52:00.924Z] WS Error Response Body:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Header/><SOAP-ENV:Body><SOAP-ENV:Fault><faultcode>InvalidParameterException</faultcode><faultstring>Offer 678 is not allowed for template </faultstring><faultactor/><detail><ns:Error xmlns:ns="http://www.ooredoo.dz/common/wsexception/v1" xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><ns:Detail><ns:TransactionId>ca3c37d7-739d-4d81-be09-9b46cebb4197</ns:TransactionId><ns:ExceptionDetails><ns:Exception><ns:key>DetailException</ns:key><ns:value>Offer 678 is not allowed for template </ns:value></ns:Exception></ns:ExceptionDetails></ns:Detail></ns:Error></detail></SOAP-ENV:Fault></SOAP-ENV:Body></SOAP-ENV:Envelope>
+[2026-03-24T10:52:00.927Z] 💾 Batch file updated: line 3 → transactionId=ca3c37d7-739d-4d81-be09-9b46cebb4197, status=FAILED
+[2026-03-24T10:52:00.931Z] 📊 Execution summary: 0 success, 3 failed, 0.89s elapsed, actual TPS: 3.37
+[2026-03-24T10:52:00.933Z] ✅ Finished processCreateContract for File ID: SetContractAndServices_24032026_115030

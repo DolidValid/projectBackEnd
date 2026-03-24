@@ -5,55 +5,57 @@ import getEsbLogConnection from '../config/dbEsbLog.js';
 const TRACKING_FILE = path.join(process.cwd(), 'batch_info.txt');
 
 /**
- * Service: resultBatch
+ * Service: getResultBatch
  * 
- * 1. Receives a fileId
- * 2. Reads batch_info.txt to find the matching batch entry
- * 3. Reads the batch payload file to extract transactionIds
- * 4. Queries the ESB_LOG Oracle DB (TRANSACTION_STATE table) 
- *    using those transactionIds
- * 5. Returns the combined results
+ * This service handles two modes of operation:
+ * 1. BATCH MODE: If a fileId is provided and exists in local tracking, it reads the 
+ *    batch payload file to merge local data (MSISDN) with DB status.
+ * 2. GLOBAL MODE: If no batch is found locally, it performs a direct query on the 
+ *    ESB_LOG TRANSACTION_STATE table by MSISDN, TransactionID, or FileID.
  */
-async function getResultBatch({ fileId, searchMsisdn, searchTransactionId, page = 1, limit = 200 }) {
-  console.info(`[resultBatch] Starting for fileId: ${fileId}, page: ${page}, limit: ${limit}`);
+async function getResultBatch({ fileId, searchMsisdn, searchTransactionId, page = 1, limit = 50 }) {
+  console.info(`[getResultBatch] Mode Detection for: fileId=${fileId}, MSISDN=${searchMsisdn}, TxId=${searchTransactionId}`);
 
-  // ───────────────────────────────────────────────
-  // STEP 1: Find the batch entry in batch_info.txt
-  // ───────────────────────────────────────────────
   let batchEntry = null;
 
-  try {
-    const fileContent = await fs.readFile(TRACKING_FILE, 'utf8');
-    const lines = fileContent.trim().split('\n');
-
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      try {
-        const batch = JSON.parse(line);
-        if (batch.fileId === fileId) {
-          batchEntry = batch;
-          break;
-        }
-      } catch {
-        // Skip corrupted lines
+  // ─────────────────────────────────────────────────────────────────────────
+  // STEP 1: Check if we should operate in BATCH MODE
+  // ─────────────────────────────────────────────────────────────────────────
+  if (fileId && fileId !== 'all') {
+    try {
+      const fileContent = await fs.readFile(TRACKING_FILE, 'utf8');
+      const lines = fileContent.trim().split('\n');
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const batch = JSON.parse(line);
+          if (batch.fileId === fileId) {
+            batchEntry = batch;
+            break;
+          }
+        } catch (e) {}
       }
+    } catch (err) {
+      console.warn(`[getResultBatch] Note: batch_info.txt not found or inaccessible. Falling back to global search.`);
     }
-  } catch (err) {
-    if (err.code === 'ENOENT') {
-      throw new Error('batch_info.txt not found. No batches have been uploaded yet.');
-    }
-    throw err;
   }
 
-  if (!batchEntry) {
-    throw new Error(`No batch found with fileId: ${fileId}`);
+  // If we found a batch entry, proceed with BATCH MODE (Payload + DB merge)
+  if (batchEntry) {
+    console.info(`[getResultBatch] -> BATCH MODE ACTIVE for ${fileId}`);
+    return await getBatchModeResults(batchEntry, { searchMsisdn, searchTransactionId, page, limit });
   }
 
-  console.info(`[resultBatch] Found batch entry:`, batchEntry);
+  // Otherwise, proceed with GLOBAL MODE (Direct DB query)
+  console.info(`[getResultBatch] -> GLOBAL MODE ACTIVE`);
+  return await getGlobalModeResults({ fileId, searchMsisdn, searchTransactionId, page, limit });
+}
 
-  // ───────────────────────────────────────────────
-  // STEP 2: Read the batch payload file to get transactionIds
-  // ───────────────────────────────────────────────
+/** 
+ * INTERNAL: Batch Mode logic (Reads payload file and queries specific Transaction IDs)
+ */
+async function getBatchModeResults(batchEntry, { searchMsisdn, searchTransactionId, page, limit }) {
+  const fileId = batchEntry.fileId;
   const operationType = batchEntry.operationType || 'CREATE_CONTRACT';
   const batchDirectory = path.join(process.cwd(), 'batches', operationType);
   const payloadFilePath = path.join(batchDirectory, `${fileId}.txt`);
@@ -63,138 +65,154 @@ async function getResultBatch({ fileId, searchMsisdn, searchTransactionId, page 
     const payloadContent = await fs.readFile(payloadFilePath, 'utf8');
     dataArray = JSON.parse(payloadContent);
   } catch (err) {
-    throw new Error(`Could not read batch payload file at ${payloadFilePath}: ${err.message}`);
+    // Fallback: if payload file is missing but entry exists, we can still try global mode for that ID
+    console.warn(`[getResultBatch] Payload file missing at ${payloadFilePath}. Falling back to global mode.`);
+    return await getGlobalModeResults({ fileId, searchMsisdn, searchTransactionId, page, limit });
   }
 
-  // Apply filters
-  let filteredDataArray = dataArray;
-  
+  // Apply filters to payload
+  let filteredData = dataArray;
   if (searchMsisdn) {
-    filteredDataArray = filteredDataArray.filter(record => 
-      (record.msisdn || record.MSISDN || '').includes(searchMsisdn)
-    );
+    filteredData = filteredData.filter(r => (r.msisdn || r.MSISDN || '').toString().includes(searchMsisdn));
   }
-  
   if (searchTransactionId) {
-    filteredDataArray = filteredDataArray.filter(record => 
-      (record.transactionId || '').includes(searchTransactionId)
-    );
+    filteredData = filteredData.filter(r => (r.transactionId || '').includes(searchTransactionId));
   }
 
-  // Extract transaction IDs from the FILTERED batch records
-  const allTransactionIds = filteredDataArray
-    .map(record => record.transactionId)
+  const totalRecords = filteredData.length;
+  const offset = (page - 1) * limit;
+  const pageData = filteredData.slice(offset, offset + limit);
+
+  const transactionIds = pageData
+    .map(r => r.transactionId)
     .filter(id => id && id.trim() !== '');
 
-  const totalFilteredRecords = allTransactionIds.length;
-  
-  // Apply pagination
-  const offset = (page - 1) * limit;
-  const transactionIdsToFetch = allTransactionIds.slice(offset, offset + limit);
+  let dbResults = [];
+  if (transactionIds.length > 0) {
+    let connection;
+    try {
+      connection = await getEsbLogConnection();
+      const bindNames = transactionIds.map((_, i) => `:t${i}`);
+      const binds = {};
+      transactionIds.forEach((id, i) => binds[`t${i}`] = id);
 
-  if (transactionIdsToFetch.length === 0) {
-    return {
-      batchInfo: batchEntry,
-      message: 'No transaction IDs found in the batch file or matched search criteria.',
-      transactionResults: [],
-      pagination: {
-        page,
-        limit,
-        totalRecords: totalFilteredRecords,
-        totalPages: Math.ceil(totalFilteredRecords / limit)
-      }
-    };
+      const sql = `
+        SELECT TRANSACTION_ID, MAIN_INPUT, CREATION_DATE, STATUS_DATE, STATUS, 
+               ADDITIONAL_INPUT, MSGCODE, STEP, TRACE_INFO
+        FROM TRANSACTION_STATE 
+        WHERE TRANSACTION_ID IN (${bindNames.join(', ')})
+      `;
+
+      const result = await connection.execute(sql, binds, { outFormat: 4002 });
+      dbResults = result.rows;
+    } catch (err) {
+      console.error(`[getResultBatch] DB Query failed in Batch Mode:`, err);
+      // We continue with empty DB results so user can at least see local payload data
+    } finally {
+      if (connection) await connection.close();
+    }
   }
 
-  console.info(`[resultBatch] Found ${totalFilteredRecords} matching transaction IDs, querying ${transactionIdsToFetch.length} for page ${page}`);
+  // Merge Local + DB
+  const merged = pageData.map(record => {
+    const dbRow = dbResults.find(row => row.TRANSACTION_ID === record.transactionId);
+    return {
+      msisdn: record.msisdn || record.MSISDN || '',
+      transactionId: record.transactionId || '',
+      TRANSACTION_ID: record.transactionId || '',
+      wsStatus: record.wsStatus || '',
+      // Map DB fields
+      STATUS: dbRow?.STATUS || record.wsStatus || 'PENDING',
+      MAIN_INFO: dbRow?.MAIN_INPUT || record.wsError || '',
+      PROCESS_ADDITION_MSG: dbRow?.ADDITIONAL_INPUT || '',
+      TRACE_IN_STEP: dbRow?.TRACE_INFO || dbRow?.STEP || '',
+      CREATION_DATE: dbRow?.CREATION_DATE || '',
+      STATUS_DATE: dbRow?.STATUS_DATE || ''
+    };
+  });
 
+  return {
+    batchInfo: batchEntry,
+    transactionResults: merged,
+    pagination: {
+      page,
+      limit,
+      totalRecords,
+      totalPages: Math.ceil(totalRecords / limit)
+    }
+  };
+}
 
-  // ───────────────────────────────────────────────
-  // STEP 3: Query ESB_LOG Oracle DB for results
-  // ───────────────────────────────────────────────
+/**
+ * INTERNAL: Global Mode logic (Direct DB query with filters)
+ */
+async function getGlobalModeResults({ fileId, searchMsisdn, searchTransactionId, page, limit }) {
   let connection;
   try {
     connection = await getEsbLogConnection();
-    console.log('[resultBatch] ESB_LOG DB connection established');
+    let whereClauses = [];
+    let binds = {};
 
-    // Build dynamic IN clause with bind variables
-    const bindNames = transactionIdsToFetch.map((_, i) => `:t${i}`);
-    const binds = {};
-    transactionIdsToFetch.forEach((id, i) => {
-      binds[`t${i}`] = id;
-    });
+    if (searchTransactionId) {
+      whereClauses.push("TRANSACTION_ID = :searchTransactionId");
+      binds.searchTransactionId = searchTransactionId;
+    }
 
-    const sql = `
-      SELECT 
-        TRANSACTION_ID,
-        MAIN_INFO,
-        CREATION_DATE,
-        STATUS_DATE,
-        STATUS,
-        PROCESS_ADDITION_MSG,
-        MSG_CODE,
-        TRACE_IN_STEP
+    if (searchMsisdn) {
+      const clean = searchMsisdn.replace(/^213/, '').replace(/^0/, '');
+      const variants = [searchMsisdn, clean, '0' + clean, '213' + clean];
+      const uniqueVariants = [...new Set(variants)];
+      const msisdnBinds = uniqueVariants.map((_, i) => `:m${i}`).join(', ');
+      whereClauses.push(`(ADDITIONAL_INPUT IN (${msisdnBinds}) OR MAIN_INPUT IN (${msisdnBinds}))`);
+      uniqueVariants.forEach((v, i) => binds[`m${i}`] = v);
+    }
+
+    if (fileId && fileId !== 'all') {
+      whereClauses.push("(MAIN_INPUT = :fileId OR ADDITIONAL_INPUT = :fileId)");
+      binds.fileId = fileId;
+    }
+
+    let whereSql = whereClauses.length > 0 ? "WHERE " + whereClauses.join(" AND ") : "WHERE CREATION_DATE > SYSDATE - 10";
+
+    const countSql = `SELECT COUNT(*) FROM TRANSACTION_STATE ${whereSql}`;
+    const countResult = await connection.execute(countSql, binds);
+    const totalRecords = countResult.rows[0][0];
+
+    const offset = (page - 1) * limit;
+    const dataSql = `
+      SELECT TRANSACTION_ID, MAIN_INPUT, CREATION_DATE, STATUS_DATE, STATUS, 
+             ADDITIONAL_INPUT, MSGCODE, STEP, TRACE_INFO
       FROM TRANSACTION_STATE 
-      WHERE TRANSACTION_ID IN (${bindNames.join(', ')})
+      ${whereSql}
+      ORDER BY CREATION_DATE DESC
+      OFFSET :offset ROWS FETCH NEXT :maxRows ROWS ONLY
     `;
+    
+    const pageBinds = { ...binds, offset, maxRows: limit };
+    const result = await connection.execute(dataSql, pageBinds, { outFormat: 4002 });
 
-    console.debug('[resultBatch] Executing SQL with', transactionIdsToFetch.length, 'bind variables');
-
-    const result = await connection.execute(sql, binds, { 
-      outFormat: 4002 // oracledb.OUT_FORMAT_OBJECT
-    });
-
-    console.info(`[resultBatch] Query returned ${result.rows.length} rows`);
-
-    // Slice the subset of filtered data array specifically for this page
-    const pageDataArray = filteredDataArray.slice(offset, offset + limit);
-
-    // Merge batch record data with Oracle results for a complete picture
-    const mergedResults = pageDataArray.map(record => {
-      const oracleResult = result.rows.find(
-        row => row.TRANSACTION_ID === record.transactionId
-      );
-      return {
-        // From the batch file
-        msisdn: record.msisdn || record.MSISDN || '',
-        fileId: record.fileId || '',
-        transactionId: record.transactionId || '',
-        wsStatus: record.wsStatus || '',
-        // From Oracle ESB_LOG (if found)
-        TRANSACTION_ID: oracleResult?.TRANSACTION_ID || record.transactionId || '',
-        MAIN_INFO: oracleResult?.MAIN_INFO || '',
-        CREATION_DATE: oracleResult?.CREATION_DATE || '',
-        STATUS_DATE: oracleResult?.STATUS_DATE || '',
-        STATUS: oracleResult?.STATUS || '',
-        PROCESS_ADDITION_MSG: oracleResult?.PROCESS_ADDITION_MSG || '',
-        MSG_CODE: oracleResult?.MSG_CODE || '',
-        TRACE_IN_STEP: oracleResult?.TRACE_IN_STEP || ''
-      };
-    });
+    const mapped = result.rows.map(row => ({
+      transactionId: row.TRANSACTION_ID,
+      TRANSACTION_ID: row.TRANSACTION_ID,
+      STATUS: row.STATUS,
+      MAIN_INFO: row.MAIN_INPUT,
+      PROCESS_ADDITION_MSG: row.ADDITIONAL_INPUT,
+      TRACE_IN_STEP: row.TRACE_INFO || row.STEP,
+      CREATION_DATE: row.CREATION_DATE,
+      STATUS_DATE: row.STATUS_DATE
+    }));
 
     return {
-      batchInfo: batchEntry,
-      transactionResults: mergedResults,
+      transactionResults: mapped,
       pagination: {
         page,
         limit,
-        totalRecords: totalFilteredRecords,
-        totalPages: Math.ceil(totalFilteredRecords / limit)
+        totalRecords,
+        totalPages: Math.ceil(totalRecords / limit)
       }
     };
-
-  } catch (err) {
-    console.error('[resultBatch] Oracle query failed:', err);
-    throw err;
   } finally {
-    if (connection) {
-      try {
-        await connection.close();
-        console.log('[resultBatch] ESB_LOG DB connection closed');
-      } catch (err) {
-        console.error('[resultBatch] Error closing ESB_LOG connection:', err);
-      }
-    }
+    if (connection) await connection.close();
   }
 }
 
