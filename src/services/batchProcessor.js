@@ -8,12 +8,6 @@ const TRACKING_FILE = path.join(process.cwd(), 'batch_info.txt');
 // ============================================================
 // THROTTLE / TPS CONFIGURATION
 // ============================================================
-// Adjust these values to control the rate of outgoing SOAP calls.
-// - TPS: Target transactions-per-second (e.g. 5 = max 5 calls/sec)
-// - DELAY_BETWEEN_CALLS_MS: Computed from TPS (1000/TPS ms between calls)
-// - BURST_SIZE: How many calls to send before pausing (set to 1 for strict throttle)
-// - TIMEOUT_MS: Per-request timeout so a slow call doesn't block the queue
-// ============================================================
 const THROTTLE_CONFIG = {
   TPS: parseInt(process.env.BATCH_TPS) || 5,              // 5 calls per second by default
   BURST_SIZE: parseInt(process.env.BATCH_BURST) || 1,      // 1 = strictly sequential
@@ -30,12 +24,9 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Extract TransactionId from a SOAP XML response body.
- * Works for both success and fault responses.
- * Looks for <ns:TransactionId>...</ns:TransactionId> or <TransactionId>...</TransactionId>
  */
 function extractTransactionId(xmlString) {
   if (!xmlString || typeof xmlString !== 'string') return null;
-  // Try namespaced version first: <ns:TransactionId>...
   let match = xmlString.match(/<[^>]*?TransactionId[^>]*?>([^<]+)<\/[^>]*?TransactionId>/i);
   if (match && match[1]) return match[1].trim();
   return null;
@@ -43,7 +34,6 @@ function extractTransactionId(xmlString) {
 
 /**
  * Update the batch_info.txt tracking file for a specific fileId.
- * Merges new fields (like transactionIds) into the matching JSON line.
  */
 async function updateBatchTracking(fileId, updates) {
   try {
@@ -64,13 +54,12 @@ async function updateBatchTracking(fileId, updates) {
       try {
         const batch = JSON.parse(line);
         if (batch.fileId === fileId) {
-          // Merge all update fields into this batch line
           Object.assign(batch, updates);
           changed = true;
         }
         updatedLines.push(JSON.stringify(batch));
       } catch {
-        updatedLines.push(line); // keep corrupted lines as-is
+        updatedLines.push(line);
       }
     }
 
@@ -82,54 +71,48 @@ async function updateBatchTracking(fileId, updates) {
   }
 }
 
+// Helper for case-insensitive key lookup
+const getVal = (record, key) => {
+  if (!record) return "";
+  const foundKey = Object.keys(record).find(k => k.toLowerCase() === key.toLowerCase());
+  return foundKey ? record[foundKey] : "";
+};
+
+// Post-processor: remove any empty XML tags
+const removeEmptyTags = (xml) => {
+  let cleaned = xml;
+  let prev;
+  do {
+    prev = cleaned;
+    cleaned = cleaned.replace(/<(\w+)([^>]*)>\s*<\/\1>/g, '');
+    cleaned = cleaned.replace(/<(\w+)([^>]*)\s*\/>/g, (match, tag) => {
+      if (tag.includes(':')) return match;
+      return '';
+    });
+  } while (cleaned !== prev);
+  cleaned = cleaned.replace(/^\s*[\r\n]/gm, '');
+  return cleaned;
+};
+
+// Helper to handle the "ID#VALUE|ID#VALUE" pattern
+const parseList = (inputString) => {
+  if (!inputString || typeof inputString !== 'string' || inputString.trim() === "") return [];
+  return inputString.split('|').map(item => {
+    const parts = item.split('#');
+    return {
+      id: parts[0] || "",
+      value: parts[1] || ""
+    };
+  });
+};
+
 // --- Processors ---
 
 async function processCreateContract(fileId, filePath, dataArray) {
-  console.log(`[BatchProcessor] 🚀 Executing processCreateContract for File ID: ${fileId} with ${dataArray.length} records.`);
-  
   const generateSoapRequest = (record) => {
-    // Helper to handle the "ID#VALUE|ID#VALUE" pattern seen in the image
-    const parseList = (inputString) => {
-      if (!inputString || typeof inputString !== 'string' || inputString.trim() === "") return [];
-      return inputString.split('|').map(item => {
-        const parts = item.split('#');
-        return {
-          id: parts[0] || "",
-          value: parts[1] || ""
-        };
-      });
-    };
-
-    // Helper for case-insensitive key lookup to prevent empty payloads
-    const getVal = (key) => {
-      const foundKey = Object.keys(record).find(k => k.toLowerCase() === key.toLowerCase());
-      return foundKey ? record[foundKey] : "";
-    };
-
-    // Post-processor: remove any empty XML tags like <Tag></Tag> or <Tag/> and blank lines
-    const removeEmptyTags = (xml) => {
-      // Repeatedly remove empty tags (handles nested empty parents)
-      let cleaned = xml;
-      let prev;
-      do {
-        prev = cleaned;
-        // Remove <Tag></Tag> (with optional whitespace inside)
-        cleaned = cleaned.replace(/<(\w+)([^>]*)>\s*<\/\1>/g, '');
-        // Remove self-closing <Tag/>
-        cleaned = cleaned.replace(/<(\w+)([^>]*)\s*\/>/g, (match, tag) => {
-          // Keep intentional self-closing tags like <wsh:userLogin/> and <wsh:notification/>
-          if (tag.includes(':')) return match;
-          return '';
-        });
-      } while (cleaned !== prev);
-      // Remove blank lines left behind
-      cleaned = cleaned.replace(/^\s*[\r\n]/gm, '');
-      return cleaned;
-    };
-  
-    const checkItems = parseList(getVal('CHECK_LIST'));
-    const comboItems = parseList(getVal('COMBO_LIST'));
-    const textItems = parseList(getVal('TEXT_LIST'));
+    const checkItems = parseList(getVal(record, 'CHECK_LIST'));
+    const comboItems = parseList(getVal(record, 'COMBO_LIST'));
+    const textItems = parseList(getVal(record, 'TEXT_LIST'));
   
     const rawXml = `
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsh="http://www.ooredoo.dz/wsheader" xmlns:set="http://www.ooredoo.dz/ws/contract/setContractAndServices">
@@ -146,33 +129,33 @@ async function processCreateContract(fileId, filePath, dataArray) {
    <soapenv:Body>
       <set:setContractAndServices>
          <SUBSCRIPTOR>
-            <IdClient>${getVal('CS_ID') || "?"}</IdClient>
+            <IdClient>${getVal(record, 'CS_ID') || "?"}</IdClient>
             <Contract>
-               <IdSubscription>${getVal('CO_ID')}</IdSubscription>
-               <Status>${getVal('CONTRACT_STATUS')}</Status>
-               <StatusReason>${getVal('STATUS_REASON')}</StatusReason>
-               <Action>${getVal('ACTION')}</Action>
-               <ContractOwner>${getVal('MSISDN')}</ContractOwner>
-               <BillDetail>${getVal('BILL_DETAIL')}</BillDetail>
-               <Currency>${getVal('CURRENCY')}</Currency>
-               <ContractContext>${getVal('TEMPLATE_NAME')}</ContractContext>
-               <Resource>${getVal('SIM_NUM')}</Resource>
-               <SubcriptionDate>${getVal('SUBSCRIPTION_DATE')}</SubcriptionDate>
+               <IdSubscription>${getVal(record, 'CO_ID')}</IdSubscription>
+               <Status>${getVal(record, 'CONTRACT_STATUS')}</Status>
+               <StatusReason>${getVal(record, 'STATUS_REASON')}</StatusReason>
+               <Action>${getVal(record, 'ACTION')}</Action>
+               <ContractOwner>${getVal(record, 'MSISDN')}</ContractOwner>
+               <BillDetail>${getVal(record, 'BILL_DETAIL')}</BillDetail>
+               <Currency>${getVal(record, 'CURRENCY')}</Currency>
+               <ContractContext>${getVal(record, 'TEMPLATE_NAME')}</ContractContext>
+               <Resource>${getVal(record, 'SIM_NUM')}</Resource>
+               <SubcriptionDate>${getVal(record, 'SUBSCRIPTION_DATE')}</SubcriptionDate>
                
                <Product>
-                  <Idproduct>${getVal('TMCODE')}</Idproduct>
+                  <Idproduct>${getVal(record, 'TMCODE')}</Idproduct>
                   <Package>
-                     <IdPackage>${getVal('SP_CODE')}</IdPackage>
+                     <IdPackage>${getVal(record, 'SP_CODE')}</IdPackage>
                      <Service>
-                        <IdService>${getVal('SN_CODE')}</IdService>
-                        <Status>${getVal('STATUS')}</Status>
-                        <ChargingCode>${getVal('CHARGING_CODE')}</ChargingCode>
-                        <ChargingAmount>${getVal('CHARGING_AMOUNT')}</ChargingAmount>
-                        <ChargingFrequency>${getVal('CHARGING_FREQUENCY')}</ChargingFrequency>
-                        <ServiceContext>${getVal('SERVICE_CONTEXT')}</ServiceContext>
-                        <ServiceExpiryDate>${getVal('EXPIRY_DATE')}</ServiceExpiryDate>
+                        <IdService>${getVal(record, 'SN_CODE')}</IdService>
+                        <Status>${getVal(record, 'STATUS')}</Status>
+                        <ChargingCode>${getVal(record, 'CHARGING_CODE')}</ChargingCode>
+                        <ChargingAmount>${getVal(record, 'CHARGING_AMOUNT')}</ChargingAmount>
+                        <ChargingFrequency>${getVal(record, 'CHARGING_FREQUENCY')}</ChargingFrequency>
+                        <ServiceContext>${getVal(record, 'SERVICE_CONTEXT')}</ServiceContext>
+                        <ServiceExpiryDate>${getVal(record, 'EXPIRY_DATE')}</ServiceExpiryDate>
                         <Consumer>
-                           <ServiceUser>${getVal('SN_CODE') ? getVal('MSISDN') : ''}</ServiceUser>
+                           <ServiceUser>${getVal(record, 'SN_CODE') ? getVal(record, 'MSISDN') : ''}</ServiceUser>
                         </Consumer>
                      </Service>
                   </Package>
@@ -198,38 +181,32 @@ async function processCreateContract(fileId, filePath, dataArray) {
             </Contract>
 
             <SetOfferId>
-               <action>${getVal('ACTION_SETOFFERID')}</action>
-               <offerId>${getVal('OFFERID')}</offerId>
-               <offerProviderID>${getVal('OFFERPROVIDERID')}</offerProviderID>
-               <offerType>${getVal('OFFERTYPE')}</offerType>
+               <action>${getVal(record, 'ACTION_SETOFFERID')}</action>
+               <offerId>${getVal(record, 'OFFERID')}</offerId>
+               <offerProviderID>${getVal(record, 'OFFERPROVIDERID')}</offerProviderID>
+               <offerType>${getVal(record, 'OFFERTYPE')}</offerType>
             </SetOfferId>
          </SUBSCRIPTOR>
       </set:setContractAndServices>
    </soapenv:Body>
 </soapenv:Envelope>`.trim();
-
-    // Clean up: remove all empty XML tags automatically
     return removeEmptyTags(rawXml);
   };
 
   const endpointUrl = 'http://127.0.0.1:0170/BusinessProcess/Interfaces/intfContract-service.serviceagent/ContractEndPoint';
   const logDir = path.join(process.cwd(), 'logs');
   const logFile = path.join(logDir, `${fileId}.log`);
-  
-  // Ensure log directory exists
   try { await fs.mkdir(logDir, { recursive: true }); } catch(e){}
 
   const logMessage = async (msg) => {
     const timestamp = new Date().toISOString();
     const formattedMsg = `[${timestamp}] ${msg}\n`;
-    console.log(msg); // still log to console
+    console.log(msg);
     await fs.appendFile(logFile, formattedMsg, 'utf8');
   };
 
   await logMessage(`🚀 Starting processCreateContract for File ID: ${fileId} with ${dataArray.length} records.`);
-  await logMessage(`⚙️ Throttle: ${THROTTLE_CONFIG.TPS} TPS (${THROTTLE_CONFIG.DELAY_BETWEEN_CALLS_MS}ms between calls)`);
-
-  // Counters for execution summary
+  
   let successCount = 0;
   let failCount = 0;
   const startTime = Date.now();
@@ -244,9 +221,6 @@ async function processCreateContract(fileId, filePath, dataArray) {
     let errorMessage = null;
 
     try {
-      await logMessage(`Sending SOAP request to ${endpointUrl}...`);
-      await logMessage(`Payload snippet:\n${soapPayload.substring(0, 500)}...`);
-      
       const response = await axios.post(endpointUrl, soapPayload, {
         headers: {
           'Content-Type': 'text/xml;charset=UTF-8',
@@ -254,114 +228,167 @@ async function processCreateContract(fileId, filePath, dataArray) {
         },
         timeout: THROTTLE_CONFIG.TIMEOUT_MS
       });
-      
-      // Extract TransactionId from success response
       const responseBody = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
       transactionId = extractTransactionId(responseBody);
       lineStatus = 'SUCCESS';
       successCount++;
-
-      await logMessage(`✅ Line ${i+1} SUCCESS. WS Response Status: ${response.status}`);
-      await logMessage(`📋 TransactionId: ${transactionId || 'N/A'}`);
-      await logMessage(`WS Response Body:\n${responseBody}`);
-      
+      await logMessage(`✅ Line ${i+1} SUCCESS. TxId: ${transactionId || 'N/A'}`);
     } catch (err) {
       failCount++;
       errorMessage = err.message;
-      await logMessage(`❌ Line ${i+1} FAILED. Error Message: ${err.message}`);
+      await logMessage(`❌ Line ${i+1} FAILED: ${err.message}`);
       if (err.response) {
-        // Extract TransactionId even from error/fault responses
         const errBody = typeof err.response.data === 'string' ? err.response.data : JSON.stringify(err.response.data);
         transactionId = extractTransactionId(errBody);
-        await logMessage(`WS Error Status: ${err.response.status}`);
-        await logMessage(`📋 TransactionId (from fault): ${transactionId || 'N/A'}`);
-        await logMessage(`WS Error Response Body:\n${errBody}`);
       }
     }
 
-    // Update the record directly in dataArray with transactionId and status
     dataArray[i].transactionId = transactionId || null;
     dataArray[i].wsStatus = lineStatus;
-    if (errorMessage) {
-      dataArray[i].wsError = errorMessage;
-    }
+    if (errorMessage) dataArray[i].wsError = errorMessage;
 
-    // Write updated dataArray back to the batch payload file after EACH line
-    // So if the server crashes, we don't lose progress — each line's transactionId is persisted
-    try {
-      await fs.writeFile(filePath, JSON.stringify(dataArray, null, 2), 'utf8');
-      await logMessage(`💾 Batch file updated: line ${i+1} → transactionId=${transactionId || 'N/A'}, status=${lineStatus}`);
-    } catch (writeErr) {
-      await logMessage(`⚠️ Failed to write batch file after line ${i+1}: ${writeErr.message}`);
-    }
-
-    // Update batch_info.txt progress
+    await fs.writeFile(filePath, JSON.stringify(dataArray, null, 2), 'utf8');
     await updateBatchTracking(fileId, {
       progress: `${i + 1}/${dataArray.length}`,
       etat: 'IN_PROGRESS'
     });
 
-    // Throttle: wait between calls to respect TPS limit
-    if (i < dataArray.length - 1) {
-      await sleep(THROTTLE_CONFIG.DELAY_BETWEEN_CALLS_MS);
-    }
+    if (i < dataArray.length - 1) await sleep(THROTTLE_CONFIG.DELAY_BETWEEN_CALLS_MS);
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
-  const actualTps = (dataArray.length / parseFloat(elapsed)).toFixed(2);
-
-  await logMessage(`📊 Execution summary: ${successCount} success, ${failCount} failed, ${elapsed}s elapsed, actual TPS: ${actualTps}`);
-  await logMessage(`✅ Finished processCreateContract for File ID: ${fileId}`);
-
-  // Final update: mark batch_info.txt as PROCESSED with summary
+  await logMessage(`📊 Finished ${fileId}: ${successCount} ok, ${failCount} fail in ${elapsed}s`);
   await updateBatchTracking(fileId, {
     progress: `${dataArray.length}/${dataArray.length}`,
     etat: 'PROCESSED',
-    executionSummary: {
-      total: dataArray.length,
-      success: successCount,
-      failed: failCount,
-      elapsedSeconds: parseFloat(elapsed),
-      actualTps: parseFloat(actualTps)
-    }
+    executionSummary: { total: dataArray.length, success: successCount, failed: failCount, elapsedSeconds: parseFloat(elapsed) }
   });
 }
 
 async function processSetStatus(fileId, filePath, dataArray) {
   console.log(`[BatchProcessor] 🚀 Executing processSetStatus for File ID: ${fileId} with ${dataArray.length} records.`);
-  // TODO: Add loop here to process your records, call Oracle APIs etc.
+  
+  const generateSoapRequest = (record) => {
+    const rawXml = `
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsh="http://www.ooredoo.dz/wsheader" xmlns:set="http://www.ooredoo.dz/ws/contract/setContractStatus">
+   <soapenv:Header>
+      <wsse:Security soapenv:mustUnderstand="0" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <wsse:UsernameToken wsu:Id="UsernameToken-16739353" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsse:Username>soaesb</wsse:Username>
+            <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">esbsoa2014</wsse:Password>
+         </wsse:UsernameToken>
+      </wsse:Security>
+      <wsh:userLogin/>
+      <wsh:notification/>
+   </soapenv:Header>
+   <soapenv:Body>
+      <set:setContractStatusRequest>
+         <msisdn>${getVal(record, 'MSISDN')}</msisdn>
+         <coId>${getVal(record, 'CO_ID')}</coId>
+         <status>${getVal(record, 'STATUS')}</status>
+         <reason>${getVal(record, 'REASON')}</reason>
+         <validFrom>${getVal(record, 'VALID_FROM')}</validFrom>
+         <templateName>${getVal(record, 'TEMPLATE_NAME')}</templateName>
+      </set:setContractStatusRequest>
+   </soapenv:Body>
+</soapenv:Envelope>`.trim();
+    return removeEmptyTags(rawXml);
+  };
+
+  const endpointUrl = 'http://127.0.0.1:0170/BusinessProcess/Interfaces/intfContract-service.serviceagent/ContractEndPoint';
+  const logDir = path.join(process.cwd(), 'logs');
+  const logFile = path.join(logDir, `${fileId}.log`);
+  try { await fs.mkdir(logDir, { recursive: true }); } catch(e){}
+
+  const logMessage = async (msg) => {
+    const timestamp = new Date().toISOString();
+    const formattedMsg = `[${timestamp}] ${msg}\n`;
+    console.log(msg);
+    await fs.appendFile(logFile, formattedMsg, 'utf8');
+  };
+
+  await logMessage(`🚀 Starting processSetStatus for File ID: ${fileId} with ${dataArray.length} records.`);
+  
+  let successCount = 0;
+  let failCount = 0;
+  const startTime = Date.now();
+
+  for (let i = 0; i < dataArray.length; i++) {
+    const record = dataArray[i];
+    await logMessage(`--- Processing Line ${i+1} of ${dataArray.length} ---`);
+    const soapPayload = generateSoapRequest(record);
+    
+    let transactionId = null;
+    let lineStatus = 'FAILED';
+    let errorMessage = null;
+
+    try {
+      const response = await axios.post(endpointUrl, soapPayload, {
+        headers: {
+          'Content-Type': 'text/xml;charset=UTF-8',
+          'SOAPAction': '"/BusinessProcess/Interfaces/intfContract-service.serviceagent//SetContractStatusOperation"'
+        },
+        timeout: THROTTLE_CONFIG.TIMEOUT_MS
+      });
+      const responseBody = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+      transactionId = extractTransactionId(responseBody);
+      lineStatus = 'SUCCESS';
+      successCount++;
+      await logMessage(`✅ Line ${i+1} SUCCESS. TxId: ${transactionId || 'N/A'}`);
+    } catch (err) {
+      failCount++;
+      errorMessage = err.message;
+      await logMessage(`❌ Line ${i+1} FAILED: ${err.message}`);
+      if (err.response) {
+        const errBody = typeof err.response.data === 'string' ? err.response.data : JSON.stringify(err.response.data);
+        transactionId = extractTransactionId(errBody);
+      }
+    }
+
+    dataArray[i].transactionId = transactionId || null;
+    dataArray[i].wsStatus = lineStatus;
+    if (errorMessage) dataArray[i].wsError = errorMessage;
+
+    await fs.writeFile(filePath, JSON.stringify(dataArray, null, 2), 'utf8');
+    await updateBatchTracking(fileId, {
+      progress: `${i + 1}/${dataArray.length}`,
+      etat: 'IN_PROGRESS'
+    });
+
+    if (i < dataArray.length - 1) await sleep(THROTTLE_CONFIG.DELAY_BETWEEN_CALLS_MS);
+  }
+
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+  await logMessage(`📊 Finished ${fileId}: ${successCount} ok, ${failCount} fail in ${elapsed}s`);
+  await updateBatchTracking(fileId, {
+    progress: `${dataArray.length}/${dataArray.length}`,
+    etat: 'PROCESSED',
+    executionSummary: { total: dataArray.length, success: successCount, failed: failCount, elapsedSeconds: parseFloat(elapsed) }
+  });
 }
 
 async function processActivation3g(fileId, filePath, dataArray) {
   console.log(`[BatchProcessor] 🚀 Executing processActivation3g for File ID: ${fileId} with ${dataArray.length} records.`);
-  // TODO: Add loop here to process your records, call Oracle APIs etc.
 }
 
 async function processActivateServiceParametre(fileId, filePath, dataArray) {
   console.log(`[BatchProcessor] 🚀 Executing processActivateServiceParametre for File ID: ${fileId} with ${dataArray.length} records.`);
-  // TODO: Add loop here to process your records, call Oracle APIs etc.
 }
 
 async function processUpdateRatePlan(fileId, filePath, dataArray) {
   console.log(`[BatchProcessor] 🚀 Executing processUpdateRatePlan for File ID: ${fileId} with ${dataArray.length} records.`);
-  // TODO: Add loop here to process your records, call Oracle APIs etc.
 }
 
 // --- Background Job ---
 
 async function checkPendingBatches() {
   console.log("[BatchProcessor] ⏰ Checking for pending batches...");
-
   try {
-    // 1. Read tracking file
     let fileContent;
     try {
       fileContent = await fs.readFile(TRACKING_FILE, 'utf8');
     } catch (err) {
-      if (err.code === 'ENOENT') {
-        // tracking file doesn't exist yet, simply ignore
-        return;
-      }
+      if (err.code === 'ENOENT') return;
       throw err;
     }
 
@@ -370,48 +397,29 @@ async function checkPendingBatches() {
 
     for (const line of lines) {
       if (!line) continue;
-
       try {
         const batch = JSON.parse(line);
-
-        // Parse DD/MM/YYYY HH24:MI:SS or ISO String
-        // InfoFile.jsx currently sends: DD/MM/YYYY HH:mm:ss
         let executionDate;
         if (batch.executionDate && batch.executionDate.includes('/')) {
             const [datePart, timePart] = batch.executionDate.split(' ');
             const [day, month, year] = datePart.split('/');
             executionDate = new Date(`${year}-${month}-${day}T${timePart}`);
         } else if (batch.executionDate) {
-            // ISO format fallback
             executionDate = new Date(batch.executionDate);
         } else {
-            // Default to past if missing date
             executionDate = now;
         }
 
-        // 2. Check if we should process it
         if (batch.etat === 'PENDING' && now >= executionDate) {
-          console.log(`[BatchProcessor] 👉 Found pending batch ready for execution: ${batch.fileId} (${batch.operationType})`);
-
-          // Immediately update state to IN_PROGRESS so it won't be picked up again
+          console.log(`[BatchProcessor] 👉 Processing: ${batch.fileId} (${batch.operationType})`);
           await updateBatchTracking(batch.fileId, { etat: 'IN_PROGRESS' });
 
           try {
-            // 3. Locate the file payload
             const batchDirectory = path.join(process.cwd(), "batches", batch.operationType);
             const payloadFilePath = path.join(batchDirectory, `${batch.fileId}.txt`);
-            
-            let payloadContent;
-            try {
-                payloadContent = await fs.readFile(payloadFilePath, 'utf8');
-            } catch (e) {
-                console.error(`[BatchProcessor] ❌ Payload file missing for ${batch.fileId} at ${payloadFilePath}`);
-                throw new Error(`Payload file missing: ${batch.fileId}`);
-            }
-            
+            const payloadContent = await fs.readFile(payloadFilePath, 'utf8');
             const dataArray = JSON.parse(payloadContent);
 
-            // 4. Route to specific processor
             switch (batch.operationType) {
               case "CREATE_CONTRACT":
                 await processCreateContract(batch.fileId, payloadFilePath, dataArray);
@@ -429,33 +437,24 @@ async function checkPendingBatches() {
                 await processUpdateRatePlan(batch.fileId, payloadFilePath, dataArray);
                 break;
               default:
-                console.warn(`[BatchProcessor] ⚠️ Unknown operationType: ${batch.operationType}`);
                 throw new Error(`Unknown operationType: ${batch.operationType}`);
             }
-
           } catch (processErr) {
-            console.error(`[BatchProcessor] ❌ Error executing batch ${batch.fileId}:`, processErr);
-            // On error, properly save status to FILE tracking using updateBatchTracking
-            await updateBatchTracking(batch.fileId, {
-              etat: 'ERROR',
-              errorMessage: processErr.message
-            });
+            console.error(`[BatchProcessor] ❌ Error ${batch.fileId}:`, processErr);
+            await updateBatchTracking(batch.fileId, { etat: 'ERROR', errorMessage: processErr.message });
           }
         }
-
       } catch (parseErr) {
-        console.error("[BatchProcessor] Error parsing line in batch_info.txt:", parseErr);
+        console.error("[BatchProcessor] Error parsing line:", parseErr);
       }
     }
-
   } catch (err) {
     console.error("[BatchProcessor] Core cron job error:", err);
   }
 }
 
 export function startBatchTimer() {
-  // Run every 1 minute
-  console.log("[BatchProcessor] Timer initialized. Will check for pending batches every minute.");
+  console.log("[BatchProcessor] Timer initialized.");
   cron.schedule('* * * * *', () => {
     checkPendingBatches();
   });
