@@ -1,0 +1,16 @@
+[2026-03-26T12:07:00.037Z] 🚀 Starting processCreateContract for File ID: SetContractAndServices_26032026_130505 with 3 records.
+[2026-03-26T12:07:00.035Z] 🚀 Starting processCreateContract for File ID: SetContractAndServices_26032026_130505 with 3 records.
+[2026-03-26T12:07:00.040Z] --- Processing Line 1 of 3 ---
+[2026-03-26T12:07:00.040Z] --- Processing Line 1 of 3 ---
+[2026-03-26T12:07:00.069Z] ❌ Line 1 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-03-26T12:07:00.071Z] ❌ Line 1 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-03-26T12:07:00.288Z] --- Processing Line 2 of 3 ---
+[2026-03-26T12:07:00.289Z] --- Processing Line 2 of 3 ---
+[2026-03-26T12:07:00.297Z] ❌ Line 2 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-03-26T12:07:00.299Z] ❌ Line 2 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-03-26T12:07:00.518Z] --- Processing Line 3 of 3 ---
+[2026-03-26T12:07:00.517Z] --- Processing Line 3 of 3 ---
+[2026-03-26T12:07:00.523Z] ❌ Line 3 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-03-26T12:07:00.524Z] ❌ Line 3 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-03-26T12:07:00.530Z] 📊 Finished SetContractAndServices_26032026_130505: 0 ok, 3 fail in 0.49s
+[2026-03-26T12:07:00.531Z] 📊 Finished SetContractAndServices_26032026_130505: 0 ok, 3 fail in 0.49s
