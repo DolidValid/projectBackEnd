@@ -1,5 +1,6 @@
 import { insertInfoFile, InsertSet3g, getBatchHistory, deleteBatchHistory } from "../models/userModel.js";
 import { getResultBatch } from "../services/resultBatchService.js";
+import { pauseBatch, resumeBatch, cancelBatch, getActiveBatches, cancelPendingBatch, getBatchStates } from "../services/batchProcessor.js";
 
 /**
  * Controller for receiving BULK batch files from frontend.
@@ -129,6 +130,100 @@ export async function deleteHistoryHandler(req, res) {
   } catch(err) {
       console.error("deleteHistoryHandler failed:", err);
       res.status(500).json({ error: "Failed to delete from history" });
+  }
+}
+
+// ============================================================
+// BATCH CONTROL HANDLERS: Pause / Resume / Cancel
+// ============================================================
+
+/**
+ * Pause a currently running batch.
+ * POST /api/users/batch-control/pause  { fileId }
+ */
+export async function pauseBatchHandler(req, res) {
+  try {
+    const { fileId } = req.body;
+    if (!fileId) return res.status(400).json({ error: "fileId is required" });
+    const result = pauseBatch(fileId);
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (err) {
+    console.error("pauseBatchHandler failed:", err);
+    res.status(500).json({ error: "Failed to pause batch" });
+  }
+}
+
+/**
+ * Resume a paused batch.
+ * POST /api/users/batch-control/resume  { fileId }
+ */
+export async function resumeBatchHandler(req, res) {
+  try {
+    const { fileId } = req.body;
+    if (!fileId) return res.status(400).json({ error: "fileId is required" });
+    const result = resumeBatch(fileId);
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (err) {
+    console.error("resumeBatchHandler failed:", err);
+    res.status(500).json({ error: "Failed to resume batch" });
+  }
+}
+
+/**
+ * Cancel a running, paused, or pending batch.
+ * POST /api/users/batch-control/cancel  { fileId }
+ */
+export async function cancelBatchHandler(req, res) {
+  try {
+    const { fileId } = req.body;
+    if (!fileId) return res.status(400).json({ error: "fileId is required" });
+
+    // Try cancelling a running/paused batch first
+    const runtimeResult = cancelBatch(fileId);
+    if (runtimeResult.success) {
+      return res.json(runtimeResult);
+    }
+
+    // If not running, try cancelling a PENDING batch in the tracking file
+    const pendingResult = await cancelPendingBatch(fileId);
+    if (pendingResult.success) {
+      return res.json(pendingResult);
+    }
+
+    res.status(400).json({ error: pendingResult.message || runtimeResult.message || "Cannot cancel this batch" });
+  } catch (err) {
+    console.error("cancelBatchHandler failed:", err);
+    res.status(500).json({ error: "Failed to cancel batch" });
+  }
+}
+
+/**
+ * Get all active/pending batches (the queue view).
+ * GET /api/users/batch-queue
+ */
+export async function batchQueueHandler(req, res) {
+  try {
+    const activeBatches = await getActiveBatches();
+    const runtimeStates = getBatchStates();
+    
+    // Merge runtime states with batch data
+    const enriched = activeBatches.map(batch => ({
+      ...batch,
+      runtimeState: runtimeStates[batch.fileId] || null
+    }));
+
+    res.json(enriched);
+  } catch (err) {
+    console.error("batchQueueHandler failed:", err);
+    res.status(500).json({ error: "Failed to fetch batch queue" });
   }
 }
 

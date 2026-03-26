@@ -17,6 +17,73 @@ THROTTLE_CONFIG.DELAY_BETWEEN_CALLS_MS = Math.ceil(1000 / THROTTLE_CONFIG.TPS);
 
 console.log(`[BatchProcessor] Throttle config: ${THROTTLE_CONFIG.TPS} TPS, ${THROTTLE_CONFIG.DELAY_BETWEEN_CALLS_MS}ms delay, burst=${THROTTLE_CONFIG.BURST_SIZE}, timeout=${THROTTLE_CONFIG.TIMEOUT_MS}ms`);
 
+// ============================================================
+// BATCH STATE MANAGEMENT (Pause / Resume / Cancel)
+// ============================================================
+// Possible states: 'running' | 'paused' | 'cancelled'
+const batchStates = new Map();
+
+/**
+ * Pause a running batch. The processor loop will wait until resumed or cancelled.
+ */
+export function pauseBatch(fileId) {
+  const current = batchStates.get(fileId);
+  if (current === 'running') {
+    batchStates.set(fileId, 'paused');
+    console.log(`[BatchProcessor] ⏸️  Batch ${fileId} PAUSED`);
+    return { success: true, state: 'paused' };
+  }
+  return { success: false, message: `Cannot pause batch in state: ${current || 'not running'}` };
+}
+
+/**
+ * Resume a paused batch.
+ */
+export function resumeBatch(fileId) {
+  const current = batchStates.get(fileId);
+  if (current === 'paused') {
+    batchStates.set(fileId, 'running');
+    console.log(`[BatchProcessor] ▶️  Batch ${fileId} RESUMED`);
+    return { success: true, state: 'running' };
+  }
+  return { success: false, message: `Cannot resume batch in state: ${current || 'not running'}` };
+}
+
+/**
+ * Cancel a running or paused batch. The processor loop will exit.
+ */
+export function cancelBatch(fileId) {
+  const current = batchStates.get(fileId);
+  if (current === 'running' || current === 'paused') {
+    batchStates.set(fileId, 'cancelled');
+    console.log(`[BatchProcessor] 🛑 Batch ${fileId} CANCELLED`);
+    return { success: true, state: 'cancelled' };
+  }
+  return { success: false, message: `Cannot cancel batch in state: ${current || 'not running'}` };
+}
+
+/**
+ * Get all batch states (for the API to query).
+ */
+export function getBatchStates() {
+  const result = {};
+  for (const [key, value] of batchStates) {
+    result[key] = value;
+  }
+  return result;
+}
+
+/**
+ * Wait while a batch is paused. Resolves when resumed or cancelled.
+ * Returns 'running' or 'cancelled'.
+ */
+async function waitWhilePaused(fileId) {
+  while (batchStates.get(fileId) === 'paused') {
+    await sleep(500); // Check every 500ms
+  }
+  return batchStates.get(fileId); // 'running' or 'cancelled'
+}
+
 // --- Helpers ---
 
 /** Sleep for given milliseconds */
@@ -68,6 +135,67 @@ async function updateBatchTracking(fileId, updates) {
     }
   } catch (err) {
     console.error(`[BatchProcessor] Error updating tracking for ${fileId}:`, err.message);
+  }
+}
+
+/**
+ * Get the current status of a batch from the tracking file.
+ */
+async function getBatchStatus(fileId) {
+  try {
+    const fileContent = await fs.readFile(TRACKING_FILE, 'utf8');
+    const lines = fileContent.trim().split('\n');
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const batch = JSON.parse(line);
+      if (batch.fileId === fileId) {
+        return batch.etat;
+      }
+    }
+  } catch (err) {
+    console.error(`[BatchProcessor] Error getting status for ${fileId}:`, err.message);
+  }
+  return null;
+}
+
+/**
+ * Get all active/pending batches from the tracking file.
+ */
+export async function getActiveBatches() {
+  try {
+    let fileContent;
+    try {
+      fileContent = await fs.readFile(TRACKING_FILE, 'utf8');
+    } catch (err) {
+      if (err.code === 'ENOENT') return [];
+      throw err;
+    }
+
+    const lines = fileContent.trim().split('\n');
+    const activeBatches = [];
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const batch = JSON.parse(line);
+        // Include PENDING, IN_PROGRESS, PAUSED batches
+        if (['PENDING', 'IN_PROGRESS', 'PAUSED'].includes(batch.etat)) {
+          // Attach runtime state if available
+          const runtimeState = batchStates.get(batch.fileId);
+          activeBatches.push({
+            ...batch,
+            runtimeState: runtimeState || null
+          });
+        }
+      } catch {
+        // skip malformed lines
+      }
+    }
+
+    return activeBatches;
+  } catch (err) {
+    console.error('[BatchProcessor] Error getting active batches:', err.message);
+    return [];
   }
 }
 
@@ -205,6 +333,9 @@ async function processCreateContract(fileId, filePath, dataArray) {
     await fs.appendFile(logFile, formattedMsg, 'utf8');
   };
 
+  // Register this batch as running
+  batchStates.set(fileId, 'running');
+
   await logMessage(`🚀 Starting processCreateContract for File ID: ${fileId} with ${dataArray.length} records.`);
   
   let successCount = 0;
@@ -212,6 +343,39 @@ async function processCreateContract(fileId, filePath, dataArray) {
   const startTime = Date.now();
 
   for (let i = 0; i < dataArray.length; i++) {
+    // --- CHECK FOR PAUSE / CANCEL ---
+    const currentState = batchStates.get(fileId);
+    
+    if (currentState === 'cancelled') {
+      await logMessage(`🛑 Batch ${fileId} was CANCELLED at line ${i + 1}/${dataArray.length}`);
+      await updateBatchTracking(fileId, {
+        progress: `${i}/${dataArray.length}`,
+        etat: 'CANCELLED',
+        executionSummary: { total: dataArray.length, processed: i, success: successCount, failed: failCount, cancelledAt: i }
+      });
+      batchStates.delete(fileId);
+      return;
+    }
+
+    if (currentState === 'paused') {
+      await logMessage(`⏸️  Batch ${fileId} PAUSED at line ${i + 1}`);
+      await updateBatchTracking(fileId, { etat: 'PAUSED', progress: `${i}/${dataArray.length}` });
+      const resumedState = await waitWhilePaused(fileId);
+      if (resumedState === 'cancelled') {
+        await logMessage(`🛑 Batch ${fileId} was CANCELLED while paused at line ${i + 1}`);
+        await updateBatchTracking(fileId, {
+          progress: `${i}/${dataArray.length}`,
+          etat: 'CANCELLED',
+          executionSummary: { total: dataArray.length, processed: i, success: successCount, failed: failCount, cancelledAt: i }
+        });
+        batchStates.delete(fileId);
+        return;
+      }
+      await logMessage(`▶️  Batch ${fileId} RESUMED at line ${i + 1}`);
+      await updateBatchTracking(fileId, { etat: 'IN_PROGRESS' });
+    }
+    // --- END PAUSE / CANCEL CHECK ---
+
     const record = dataArray[i];
     await logMessage(`--- Processing Line ${i+1} of ${dataArray.length} ---`);
     const soapPayload = generateSoapRequest(record);
@@ -263,6 +427,7 @@ async function processCreateContract(fileId, filePath, dataArray) {
     etat: 'PROCESSED',
     executionSummary: { total: dataArray.length, success: successCount, failed: failCount, elapsedSeconds: parseFloat(elapsed) }
   });
+  batchStates.delete(fileId);
 }
 
 async function processSetStatus(fileId, filePath, dataArray) {
@@ -307,6 +472,9 @@ async function processSetStatus(fileId, filePath, dataArray) {
     await fs.appendFile(logFile, formattedMsg, 'utf8');
   };
 
+  // Register this batch as running
+  batchStates.set(fileId, 'running');
+
   await logMessage(`🚀 Starting processSetStatus for File ID: ${fileId} with ${dataArray.length} records.`);
   
   let successCount = 0;
@@ -314,6 +482,39 @@ async function processSetStatus(fileId, filePath, dataArray) {
   const startTime = Date.now();
 
   for (let i = 0; i < dataArray.length; i++) {
+    // --- CHECK FOR PAUSE / CANCEL ---
+    const currentState = batchStates.get(fileId);
+    
+    if (currentState === 'cancelled') {
+      await logMessage(`🛑 Batch ${fileId} was CANCELLED at line ${i + 1}/${dataArray.length}`);
+      await updateBatchTracking(fileId, {
+        progress: `${i}/${dataArray.length}`,
+        etat: 'CANCELLED',
+        executionSummary: { total: dataArray.length, processed: i, success: successCount, failed: failCount, cancelledAt: i }
+      });
+      batchStates.delete(fileId);
+      return;
+    }
+
+    if (currentState === 'paused') {
+      await logMessage(`⏸️  Batch ${fileId} PAUSED at line ${i + 1}`);
+      await updateBatchTracking(fileId, { etat: 'PAUSED', progress: `${i}/${dataArray.length}` });
+      const resumedState = await waitWhilePaused(fileId);
+      if (resumedState === 'cancelled') {
+        await logMessage(`🛑 Batch ${fileId} was CANCELLED while paused at line ${i + 1}`);
+        await updateBatchTracking(fileId, {
+          progress: `${i}/${dataArray.length}`,
+          etat: 'CANCELLED',
+          executionSummary: { total: dataArray.length, processed: i, success: successCount, failed: failCount, cancelledAt: i }
+        });
+        batchStates.delete(fileId);
+        return;
+      }
+      await logMessage(`▶️  Batch ${fileId} RESUMED at line ${i + 1}`);
+      await updateBatchTracking(fileId, { etat: 'IN_PROGRESS' });
+    }
+    // --- END PAUSE / CANCEL CHECK ---
+
     const record = dataArray[i];
     await logMessage(`--- Processing Line ${i+1} of ${dataArray.length} ---`);
     const soapPayload = generateSoapRequest(record);
@@ -365,6 +566,7 @@ async function processSetStatus(fileId, filePath, dataArray) {
     etat: 'PROCESSED',
     executionSummary: { total: dataArray.length, success: successCount, failed: failCount, elapsedSeconds: parseFloat(elapsed) }
   });
+  batchStates.delete(fileId);
 }
 
 async function processActivation3g(fileId, filePath, dataArray) {
@@ -450,6 +652,45 @@ async function checkPendingBatches() {
     }
   } catch (err) {
     console.error("[BatchProcessor] Core cron job error:", err);
+  }
+}
+
+/**
+ * Cancel a PENDING batch (before it even starts processing).
+ * This updates the tracking file status directly.
+ */
+export async function cancelPendingBatch(fileId) {
+  try {
+    let fileContent;
+    try {
+      fileContent = await fs.readFile(TRACKING_FILE, 'utf8');
+    } catch (err) {
+      if (err.code === 'ENOENT') return { success: false, message: 'No tracking file found' };
+      throw err;
+    }
+
+    const lines = fileContent.trim().split('\n');
+    let found = false;
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const batch = JSON.parse(line);
+        if (batch.fileId === fileId && batch.etat === 'PENDING') {
+          found = true;
+          break;
+        }
+      } catch {}
+    }
+
+    if (found) {
+      await updateBatchTracking(fileId, { etat: 'CANCELLED' });
+      return { success: true, message: 'Pending batch cancelled' };
+    }
+
+    return { success: false, message: 'Batch not found or not in PENDING state' };
+  } catch (err) {
+    return { success: false, message: err.message };
   }
 }
 
