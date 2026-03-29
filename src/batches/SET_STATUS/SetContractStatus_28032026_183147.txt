@@ -1,0 +1,13 @@
+[
+  {
+    "id": "1-2WD1XYWS29514",
+    "fileId": "SetContractStatus_28032026_183147",
+    "msisdn": 213550945335,
+    "COID": "",
+    "STATUS": "k",
+    "REASON": "76",
+    "VALIDFROM": "",
+    "TEMPLATENAME": "",
+    "jobId": ""
+  }
+]
