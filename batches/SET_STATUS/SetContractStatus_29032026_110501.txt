@@ -1,0 +1,16 @@
+[
+  {
+    "id": "1-2WD1XYWS29514",
+    "fileId": "SetContractStatus_29032026_110501",
+    "msisdn": 213550945335,
+    "COID": "",
+    "STATUS": "k",
+    "REASON": "76",
+    "VALIDFROM": "",
+    "TEMPLATENAME": "",
+    "jobId": "",
+    "transactionId": "fa192f03-faad-4cae-a0a6-e0e02adbc466",
+    "wsStatus": "FAILED",
+    "wsError": "Request failed with status code 500"
+  }
+]

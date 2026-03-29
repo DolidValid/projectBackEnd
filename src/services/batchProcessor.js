@@ -9,7 +9,7 @@ const TRACKING_FILE = path.join(process.cwd(), 'batch_info.txt');
 // THROTTLE / TPS CONFIGURATION
 // ============================================================
 const THROTTLE_CONFIG = {
-  TPS: parseInt(process.env.BATCH_TPS) || 5,              // 5 calls per second by default
+  TPS: parseInt(process.env.BATCH_TPS) || 2,              // 5 calls per second by default
   BURST_SIZE: parseInt(process.env.BATCH_BURST) || 1,      // 1 = strictly sequential
   TIMEOUT_MS: parseInt(process.env.BATCH_TIMEOUT) || 30000, // 30s per request
 };
@@ -429,6 +429,8 @@ async function processCreateContract(fileId, filePath, dataArray) {
   });
   batchStates.delete(fileId);
 }
+
+
 
 async function processSetStatus(fileId, filePath, dataArray) {
   console.log(`[BatchProcessor] 🚀 Executing processSetStatus for File ID: ${fileId} with ${dataArray.length} records.`);

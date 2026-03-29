@@ -1,0 +1,4 @@
+[2026-03-29T10:06:00.028Z] 🚀 Starting processSetStatus for File ID: SetContractStatus_29032026_110501 with 1 records.
+[2026-03-29T10:06:00.030Z] --- Processing Line 1 of 1 ---
+[2026-03-29T10:06:00.095Z] ❌ Line 1 FAILED: Request failed with status code 500
+[2026-03-29T10:06:00.101Z] 📊 Finished SetContractStatus_29032026_110501: 0 ok, 1 fail in 0.07s
