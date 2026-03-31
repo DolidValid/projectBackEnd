@@ -1,0 +1,102 @@
+[2026-03-29T10:43:00.036Z] 🚀 Starting processCreateContract for File ID: SetContractAndServices_29032026_114210 with 49 records.
+[2026-03-29T10:43:00.038Z] --- Processing Line 1 of 49 ---
+[2026-03-29T10:43:00.369Z] ❌ Line 1 FAILED: Request failed with status code 500
+[2026-03-29T10:43:00.722Z] --- Processing Line 2 of 49 ---
+[2026-03-29T10:43:00.748Z] ❌ Line 2 FAILED: Request failed with status code 500
+[2026-03-29T10:43:01.097Z] --- Processing Line 3 of 49 ---
+[2026-03-29T10:43:01.121Z] ❌ Line 3 FAILED: Request failed with status code 500
+[2026-03-29T10:43:01.465Z] --- Processing Line 4 of 49 ---
+[2026-03-29T10:43:01.489Z] ❌ Line 4 FAILED: Request failed with status code 500
+[2026-03-29T10:43:01.839Z] --- Processing Line 5 of 49 ---
+[2026-03-29T10:43:01.863Z] ❌ Line 5 FAILED: Request failed with status code 500
+[2026-03-29T10:43:02.213Z] --- Processing Line 6 of 49 ---
+[2026-03-29T10:43:02.236Z] ❌ Line 6 FAILED: Request failed with status code 500
+[2026-03-29T10:43:02.586Z] --- Processing Line 7 of 49 ---
+[2026-03-29T10:43:02.609Z] ❌ Line 7 FAILED: Request failed with status code 500
+[2026-03-29T10:43:02.960Z] --- Processing Line 8 of 49 ---
+[2026-03-29T10:43:02.983Z] ❌ Line 8 FAILED: Request failed with status code 500
+[2026-03-29T10:43:03.336Z] --- Processing Line 9 of 49 ---
+[2026-03-29T10:43:03.360Z] ❌ Line 9 FAILED: Request failed with status code 500
+[2026-03-29T10:43:03.710Z] --- Processing Line 10 of 49 ---
+[2026-03-29T10:43:03.734Z] ❌ Line 10 FAILED: Request failed with status code 500
+[2026-03-29T10:43:04.082Z] --- Processing Line 11 of 49 ---
+[2026-03-29T10:43:04.106Z] ❌ Line 11 FAILED: Request failed with status code 500
+[2026-03-29T10:43:04.458Z] --- Processing Line 12 of 49 ---
+[2026-03-29T10:43:04.481Z] ❌ Line 12 FAILED: Request failed with status code 500
+[2026-03-29T10:43:04.827Z] --- Processing Line 13 of 49 ---
+[2026-03-29T10:43:04.851Z] ❌ Line 13 FAILED: Request failed with status code 500
+[2026-03-29T10:43:05.199Z] --- Processing Line 14 of 49 ---
+[2026-03-29T10:43:05.223Z] ❌ Line 14 FAILED: Request failed with status code 500
+[2026-03-29T10:43:05.575Z] --- Processing Line 15 of 49 ---
+[2026-03-29T10:43:05.602Z] ❌ Line 15 FAILED: Request failed with status code 500
+[2026-03-29T10:43:05.947Z] --- Processing Line 16 of 49 ---
+[2026-03-29T10:43:06.023Z] ❌ Line 16 FAILED: Request failed with status code 500
+[2026-03-29T10:43:06.381Z] --- Processing Line 17 of 49 ---
+[2026-03-29T10:43:06.405Z] ❌ Line 17 FAILED: Request failed with status code 500
+[2026-03-29T10:43:06.749Z] --- Processing Line 18 of 49 ---
+[2026-03-29T10:43:06.781Z] ❌ Line 18 FAILED: Request failed with status code 500
+[2026-03-29T10:43:07.150Z] --- Processing Line 19 of 49 ---
+[2026-03-29T10:43:07.306Z] ❌ Line 19 FAILED: Request failed with status code 500
+[2026-03-29T10:43:07.664Z] --- Processing Line 20 of 49 ---
+[2026-03-29T10:43:07.688Z] ❌ Line 20 FAILED: Request failed with status code 500
+[2026-03-29T10:43:08.041Z] --- Processing Line 21 of 49 ---
+[2026-03-29T10:43:08.065Z] ❌ Line 21 FAILED: Request failed with status code 500
+[2026-03-29T10:43:08.412Z] --- Processing Line 22 of 49 ---
+[2026-03-29T10:43:08.436Z] ❌ Line 22 FAILED: Request failed with status code 500
+[2026-03-29T10:43:08.785Z] --- Processing Line 23 of 49 ---
+[2026-03-29T10:43:08.810Z] ❌ Line 23 FAILED: Request failed with status code 500
+[2026-03-29T10:43:09.154Z] ⏸️  Batch SetContractAndServices_29032026_114210 PAUSED at line 24
+[2026-03-29T10:43:15.274Z] ▶️  Batch SetContractAndServices_29032026_114210 RESUMED at line 24
+[2026-03-29T10:43:15.278Z] --- Processing Line 24 of 49 ---
+[2026-03-29T10:43:15.327Z] ❌ Line 24 FAILED: Request failed with status code 500
+[2026-03-29T10:43:15.681Z] --- Processing Line 25 of 49 ---
+[2026-03-29T10:43:15.705Z] ❌ Line 25 FAILED: Request failed with status code 500
+[2026-03-29T10:43:16.053Z] --- Processing Line 26 of 49 ---
+[2026-03-29T10:43:16.076Z] ❌ Line 26 FAILED: Request failed with status code 500
+[2026-03-29T10:43:16.425Z] --- Processing Line 27 of 49 ---
+[2026-03-29T10:43:16.448Z] ❌ Line 27 FAILED: Request failed with status code 500
+[2026-03-29T10:43:16.798Z] --- Processing Line 28 of 49 ---
+[2026-03-29T10:43:16.822Z] ❌ Line 28 FAILED: Request failed with status code 500
+[2026-03-29T10:43:17.171Z] --- Processing Line 29 of 49 ---
+[2026-03-29T10:43:17.194Z] ❌ Line 29 FAILED: Request failed with status code 500
+[2026-03-29T10:43:17.547Z] --- Processing Line 30 of 49 ---
+[2026-03-29T10:43:17.570Z] ❌ Line 30 FAILED: Request failed with status code 500
+[2026-03-29T10:43:17.918Z] --- Processing Line 31 of 49 ---
+[2026-03-29T10:43:17.941Z] ❌ Line 31 FAILED: Request failed with status code 500
+[2026-03-29T10:43:18.294Z] --- Processing Line 32 of 49 ---
+[2026-03-29T10:43:18.317Z] ❌ Line 32 FAILED: Request failed with status code 500
+[2026-03-29T10:43:18.669Z] --- Processing Line 33 of 49 ---
+[2026-03-29T10:43:18.691Z] ❌ Line 33 FAILED: Request failed with status code 500
+[2026-03-29T10:43:19.043Z] --- Processing Line 34 of 49 ---
+[2026-03-29T10:43:19.066Z] ❌ Line 34 FAILED: Request failed with status code 500
+[2026-03-29T10:43:19.421Z] --- Processing Line 35 of 49 ---
+[2026-03-29T10:43:19.446Z] ❌ Line 35 FAILED: Request failed with status code 500
+[2026-03-29T10:43:19.793Z] --- Processing Line 36 of 49 ---
+[2026-03-29T10:43:19.815Z] ❌ Line 36 FAILED: Request failed with status code 500
+[2026-03-29T10:43:20.165Z] --- Processing Line 37 of 49 ---
+[2026-03-29T10:43:20.189Z] ❌ Line 37 FAILED: Request failed with status code 500
+[2026-03-29T10:43:20.537Z] --- Processing Line 38 of 49 ---
+[2026-03-29T10:43:20.568Z] ❌ Line 38 FAILED: Request failed with status code 500
+[2026-03-29T10:43:20.922Z] --- Processing Line 39 of 49 ---
+[2026-03-29T10:43:20.945Z] ❌ Line 39 FAILED: Request failed with status code 500
+[2026-03-29T10:43:21.297Z] --- Processing Line 40 of 49 ---
+[2026-03-29T10:43:21.319Z] ❌ Line 40 FAILED: Request failed with status code 500
+[2026-03-29T10:43:21.668Z] --- Processing Line 41 of 49 ---
+[2026-03-29T10:43:21.693Z] ❌ Line 41 FAILED: Request failed with status code 500
+[2026-03-29T10:43:22.042Z] --- Processing Line 42 of 49 ---
+[2026-03-29T10:43:22.065Z] ❌ Line 42 FAILED: Request failed with status code 500
+[2026-03-29T10:43:22.416Z] --- Processing Line 43 of 49 ---
+[2026-03-29T10:43:22.438Z] ❌ Line 43 FAILED: Request failed with status code 500
+[2026-03-29T10:43:22.778Z] --- Processing Line 44 of 49 ---
+[2026-03-29T10:43:22.801Z] ❌ Line 44 FAILED: Request failed with status code 500
+[2026-03-29T10:43:23.151Z] --- Processing Line 45 of 49 ---
+[2026-03-29T10:43:23.175Z] ❌ Line 45 FAILED: Request failed with status code 500
+[2026-03-29T10:43:23.524Z] --- Processing Line 46 of 49 ---
+[2026-03-29T10:43:23.548Z] ❌ Line 46 FAILED: Request failed with status code 500
+[2026-03-29T10:43:23.900Z] --- Processing Line 47 of 49 ---
+[2026-03-29T10:43:23.924Z] ❌ Line 47 FAILED: Request failed with status code 500
+[2026-03-29T10:43:24.270Z] --- Processing Line 48 of 49 ---
+[2026-03-29T10:43:24.294Z] ❌ Line 48 FAILED: Request failed with status code 500
+[2026-03-29T10:43:24.643Z] --- Processing Line 49 of 49 ---
+[2026-03-29T10:43:24.666Z] ❌ Line 49 FAILED: Request failed with status code 500
+[2026-03-29T10:43:24.673Z] 📊 Finished SetContractAndServices_29032026_114210: 0 ok, 49 fail in 24.63s

@@ -28,9 +28,10 @@ const batchStates = new Map();
  */
 export function pauseBatch(fileId) {
   const current = batchStates.get(fileId);
+  console.log(`[BatchAPI] 🛑 Received PAUSE command for batch: ${fileId} (Current State: ${current})`);
   if (current === 'running') {
     batchStates.set(fileId, 'paused');
-    console.log(`[BatchProcessor] ⏸️  Batch ${fileId} PAUSED`);
+    console.log(`[BatchProcessor] ⏸️  Batch ${fileId} PAUSED successfully.`);
     return { success: true, state: 'paused' };
   }
   return { success: false, message: `Cannot pause batch in state: ${current || 'not running'}` };
@@ -54,9 +55,10 @@ export function resumeBatch(fileId) {
  */
 export function cancelBatch(fileId) {
   const current = batchStates.get(fileId);
+  console.log(`[BatchAPI] 🗑️ Received CANCEL command for batch: ${fileId} (Current State: ${current})`);
   if (current === 'running' || current === 'paused') {
     batchStates.set(fileId, 'cancelled');
-    console.log(`[BatchProcessor] 🛑 Batch ${fileId} CANCELLED`);
+    console.log(`[BatchProcessor] 🛑 Batch ${fileId} CANCELLED successfully.`);
     return { success: true, state: 'cancelled' };
   }
   return { success: false, message: `Cannot cancel batch in state: ${current || 'not running'}` };
@@ -385,6 +387,9 @@ async function processCreateContract(fileId, filePath, dataArray) {
     let errorMessage = null;
 
     try {
+      console.log(`[BatchProcessor] 📡 Calling CreateContract: ${endpointUrl}`);
+      console.log(`[BatchProcessor] 🔑 SOAPAction: /BusinessProcess/Interfaces/intfContract-service.serviceagent/ContractEndPoint/SetContractAndServicesOperation`);
+
       const response = await axios.post(endpointUrl, soapPayload, {
         headers: {
           'Content-Type': 'text/xml;charset=UTF-8',
@@ -403,7 +408,11 @@ async function processCreateContract(fileId, filePath, dataArray) {
       await logMessage(`❌ Line ${i+1} FAILED: ${err.message}`);
       if (err.response) {
         const errBody = typeof err.response.data === 'string' ? err.response.data : JSON.stringify(err.response.data);
+        console.error(`[BatchProcessor] 🔥 ESB ERROR BODY (${err.response.status}):`, errBody);
+        await logMessage(`   DEBUG: WS Response Content: ${errBody}`);
         transactionId = extractTransactionId(errBody);
+      } else {
+        console.error(`[BatchProcessor] 🔥 ESB ERROR (No Response):`, err.message);
       }
     }
 
@@ -526,10 +535,13 @@ async function processSetStatus(fileId, filePath, dataArray) {
     let errorMessage = null;
 
     try {
+      console.log(`[BatchProcessor] 📡 Calling SetStatus: ${endpointUrl}`);
+      console.log(`[BatchProcessor] 🔑 SOAPAction: /BusinessProcess/Interfaces/intfContract-service.serviceagent/ContractEndPoint/SetContractStatusOperation`);
+
       const response = await axios.post(endpointUrl, soapPayload, {
         headers: {
           'Content-Type': 'text/xml;charset=UTF-8',
-          'SOAPAction': '"/BusinessProcess/Interfaces/intfContract-service.serviceagent//SetContractStatusOperation"'
+          'SOAPAction': '"/BusinessProcess/Interfaces/intfContract-service.serviceagent/ContractEndPoint/SetContractStatusOperation"'
         },
         timeout: THROTTLE_CONFIG.TIMEOUT_MS
       });
@@ -544,7 +556,11 @@ async function processSetStatus(fileId, filePath, dataArray) {
       await logMessage(`❌ Line ${i+1} FAILED: ${err.message}`);
       if (err.response) {
         const errBody = typeof err.response.data === 'string' ? err.response.data : JSON.stringify(err.response.data);
+        console.error(`[BatchProcessor] 🔥 ESB ERROR BODY (${err.response.status}):`, errBody);
+        await logMessage(`   DEBUG: WS Response Content: ${errBody}`);
         transactionId = extractTransactionId(errBody);
+      } else {
+        console.error(`[BatchProcessor] 🔥 ESB ERROR (No Response):`, err.message);
       }
     }
 

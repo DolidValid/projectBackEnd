@@ -1,0 +1,28 @@
+[2026-03-29T12:55:00.032Z] 🚀 Starting processCreateContract for File ID: SetContractAndServices_29032026_135400 with 49 records.
+[2026-03-29T12:55:00.035Z] --- Processing Line 1 of 49 ---
+[2026-03-29T12:55:00.128Z] ❌ Line 1 FAILED: Request failed with status code 500
+[2026-03-29T12:55:00.478Z] --- Processing Line 2 of 49 ---
+[2026-03-29T12:55:00.501Z] ❌ Line 2 FAILED: Request failed with status code 500
+[2026-03-29T12:55:00.852Z] --- Processing Line 3 of 49 ---
+[2026-03-29T12:55:00.876Z] ❌ Line 3 FAILED: Request failed with status code 500
+[2026-03-29T12:55:01.226Z] --- Processing Line 4 of 49 ---
+[2026-03-29T12:55:01.250Z] ❌ Line 4 FAILED: Request failed with status code 500
+[2026-03-29T12:55:01.600Z] --- Processing Line 5 of 49 ---
+[2026-03-29T12:55:01.624Z] ❌ Line 5 FAILED: Request failed with status code 500
+[2026-03-29T12:55:01.974Z] --- Processing Line 6 of 49 ---
+[2026-03-29T12:55:01.997Z] ❌ Line 6 FAILED: Request failed with status code 500
+[2026-03-29T12:55:02.351Z] --- Processing Line 7 of 49 ---
+[2026-03-29T12:55:02.377Z] ❌ Line 7 FAILED: Request failed with status code 500
+[2026-03-29T12:55:02.729Z] --- Processing Line 8 of 49 ---
+[2026-03-29T12:55:02.753Z] ❌ Line 8 FAILED: Request failed with status code 500
+[2026-03-29T12:55:03.105Z] --- Processing Line 9 of 49 ---
+[2026-03-29T12:55:03.148Z] ❌ Line 9 FAILED: Request failed with status code 500
+[2026-03-29T12:55:03.492Z] --- Processing Line 10 of 49 ---
+[2026-03-29T12:55:03.516Z] ❌ Line 10 FAILED: Request failed with status code 500
+[2026-03-29T12:55:03.866Z] --- Processing Line 11 of 49 ---
+[2026-03-29T12:55:03.891Z] ❌ Line 11 FAILED: Request failed with status code 500
+[2026-03-29T12:55:04.240Z] --- Processing Line 12 of 49 ---
+[2026-03-29T12:55:04.266Z] ❌ Line 12 FAILED: Request failed with status code 500
+[2026-03-29T12:55:04.614Z] --- Processing Line 13 of 49 ---
+[2026-03-29T12:55:04.638Z] ❌ Line 13 FAILED: Request failed with status code 500
+[2026-03-29T12:55:04.989Z] ⏸️  Batch SetContractAndServices_29032026_135400 PAUSED at line 14
