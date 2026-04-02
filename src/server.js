@@ -9,6 +9,11 @@ import { startBatchTimer } from "./services/batchProcessor.js";
 const app = express();
 const PORT = 5000;
 
+
+const path = require('path');
+const express = require('express');
+
+
 // Middleware
 app.use(cors());
 // Increased limit to 50mb to allow massive bulk file uploads from frontend
@@ -23,6 +28,16 @@ app.use("/api/users", authMiddleware, userRoutes); // Protected routes!
 app.get("/", (req, res) => {
   res.send("Backend API is running 🚀");
 });
+
+
+// 1. Serve static files from the React 'dist' folder
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// 2. Catch-all route to serve React's index.html for client-side routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
 
 // Start server
 app.listen(PORT, () => {
