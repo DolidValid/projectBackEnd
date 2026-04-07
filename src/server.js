@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import path from "path";
 import cors from "cors";
 import userRoutes from "./routes/userRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -8,10 +9,6 @@ import { startBatchTimer } from "./services/batchProcessor.js";
 
 const app = express();
 const PORT = 5000;
-
-
-const path = require('path');
-const express = require('express');
 
 
 // Middleware
@@ -24,19 +21,16 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/users", authMiddleware, userRoutes); // Protected routes!
 
-// Root health check
-app.get("/", (req, res) => {
-  res.send("Backend API is running 🚀");
-});
-
-
+const __dirname = path.resolve();
 // 1. Serve static files from the React 'dist' folder
 app.use(express.static(path.join(__dirname, 'dist')));
 
 // 2. Catch-all route to serve React's index.html for client-side routing
-app.get('*', (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
+
+
 
 
 // Start server

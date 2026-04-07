@@ -17,6 +17,7 @@
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.2.1",
     "oracledb": "^6.9.0",
+    "pm2": "^5.3.1",
     "routes": "^2.1.0"
   },
   "type": "module"

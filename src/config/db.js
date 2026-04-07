@@ -1,6 +1,10 @@
 import oracledb from "oracledb";
 
-oracledb.initOracleClient({ libDir: "C:\\Program Files\\instantclient-basic-windows.x64-21.8.0.0.0dbru\\instantclient_21_8" }); 
+// Only initialize specifically on Windows. 
+// On Linux, it uses the LD_LIBRARY_PATH you set in your .bashrc
+if (process.platform === 'win32') {
+  oracledb.initOracleClient({ libDir: "C:\\Program Files\\instantclient-basic-windows.x64-21.8.0.0.0dbru\\instantclient_21_8" }); 
+}
 
 const dbConfig = {
   user: "ESB_BATCH",
