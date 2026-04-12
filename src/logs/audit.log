@@ -1,1 +1,4 @@
 [2026-04-08T14:36:19.123Z] User: testUser, Action: TEST_ACTION, Details: Testing the log
+[2026-04-12T13:49:58.323Z] User: admin, Action: UPLOAD_BATCH, Details: fileId: SetContractAndServices_12042026_144942, operation: CREATE_CONTRACT, records: 10
+[2026-04-12T13:50:03.907Z] User: admin, Action: PAUSE_BATCH, Details: fileId: SetContractAndServices_12042026_144942
+[2026-04-12T13:50:41.127Z] User: admin, Action: CANCEL_BATCH, Details: fileId: SetContractAndServices_12042026_144942, type: RUNTIME/PAUSED
