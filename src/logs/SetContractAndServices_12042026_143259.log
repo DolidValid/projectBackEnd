@@ -1,0 +1,15 @@
+[2026-04-12T13:34:00.026Z] 🚀 Starting processCreateContract for File ID: SetContractAndServices_12042026_143259 with 10 records.
+[2026-04-12T13:34:00.030Z] --- Processing Line 1 of 10 ---
+[2026-04-12T13:34:00.049Z] ❌ Line 1 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-04-12T13:34:00.559Z] --- Processing Line 2 of 10 ---
+[2026-04-12T13:34:00.566Z] ❌ Line 2 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-04-12T13:34:01.084Z] --- Processing Line 3 of 10 ---
+[2026-04-12T13:34:01.089Z] ❌ Line 3 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-04-12T13:34:01.608Z] --- Processing Line 4 of 10 ---
+[2026-04-12T13:34:01.616Z] ❌ Line 4 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-04-12T13:34:02.131Z] --- Processing Line 5 of 10 ---
+[2026-04-12T13:34:02.136Z] ❌ Line 5 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-04-12T13:34:02.651Z] --- Processing Line 6 of 10 ---
+[2026-04-12T13:34:02.657Z] ❌ Line 6 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-04-12T13:34:03.173Z] ⏸️  Batch SetContractAndServices_12042026_143259 PAUSED at line 7
+[2026-04-12T13:34:07.241Z] 🛑 Batch SetContractAndServices_12042026_143259 was CANCELLED while paused at line 7

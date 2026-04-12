@@ -234,10 +234,14 @@ export async function deleteBatchHistory(id) {
 }
 
 async function logAudit(username, action, details) {
-  const auditPath = path.join(process.cwd(), 'src', 'logs', 'audit.log');
+  // Use path relative to cwd — when nodemon runs from src/, cwd is already "src"
+  const logsDir = path.join(process.cwd(), 'logs');
+  const auditPath = path.join(logsDir, 'audit.log');
   const timestamp = new Date().toISOString();
   const logLine = `[${timestamp}] User: ${username}, Action: ${action}, Details: ${details}\n`;
   try {
+    // Ensure the logs directory exists before writing
+    await fs.mkdir(logsDir, { recursive: true });
     await fs.appendFile(auditPath, logLine, 'utf8');
   } catch (err) {
     console.error("Failed to write audit log:", err);
