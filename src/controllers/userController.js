@@ -80,6 +80,12 @@ async function active4GHandler(req, res) {
     });
 
     console.log("result issssss", result);
+    
+    // Audit Log for single activation
+    if (req.user && req.user.username) {
+      await logAudit(req.user.username, "SINGLE_ACTIVATION", `msisdn: ${msisdn}, action: ${action}, coId: ${coId || 'N/A'}`);
+    }
+
     res.json(result);
   } catch (err) {
     console.error("active4GHandler failed:", err);

@@ -234,13 +234,22 @@ export async function deleteBatchHistory(id) {
 }
 
 async function logAudit(username, action, details) {
-  // Use path relative to cwd — when nodemon runs from src/, cwd is already "src"
-  const logsDir = path.join(process.cwd(), 'logs');
+  // Ensure we consistently use the project root's logs directory
+  // Handle case where launched from inside 'src' folder
+  const cwd = process.cwd();
+  const rootDir = (cwd.endsWith('src') || cwd.endsWith('src\\') || cwd.endsWith('src/')) 
+    ? path.join(cwd, '..') 
+    : cwd;
+  
+  const logsDir = path.join(rootDir, 'logs');
   const auditPath = path.join(logsDir, 'audit.log');
-  const timestamp = new Date().toISOString();
-  const logLine = `[${timestamp}] User: ${username}, Action: ${action}, Details: ${details}\n`;
+  
+  const now = new Date();
+  const timestamp = now.toISOString();
+  const localTime = now.toLocaleString('fr-FR'); // French/Algerian format (DD/MM/YYYY HH:MM:SS)
+  
+  const logLine = `[${timestamp}] (${localTime}) User: ${username} | Action: ${action} | Details: ${details}\n`;
   try {
-    // Ensure the logs directory exists before writing
     await fs.mkdir(logsDir, { recursive: true });
     await fs.appendFile(auditPath, logLine, 'utf8');
   } catch (err) {
