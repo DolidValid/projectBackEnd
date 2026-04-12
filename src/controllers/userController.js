@@ -1,4 +1,4 @@
-import { insertInfoFile, InsertSet3g, getBatchHistory, deleteBatchHistory } from "../models/userModel.js";
+import { insertInfoFile, InsertSet3g, getBatchHistory, deleteBatchHistory, logAudit } from "../models/userModel.js";
 import { getResultBatch } from "../services/resultBatchService.js";
 import { pauseBatch, resumeBatch, cancelBatch, getActiveBatches, cancelPendingBatch, getBatchStates } from "../services/batchProcessor.js";
 
@@ -25,6 +25,11 @@ async function uploadBatchHandler(req, res) {
       operationType, 
       fileData: data 
     });
+
+    // Audit Log for upload
+    if (req.user && req.user.username) {
+      await logAudit(req.user.username, "UPLOAD_BATCH", `fileId: ${fileId}, operation: ${operationType}, records: ${lineCount || data.length}`);
+    }
 
     res.json(result);
   } catch (err) {
@@ -118,20 +123,8 @@ export async function getHistoryHandler(req, res) {
   }
 }
 
-export async function deleteHistoryHandler(req, res) {
-  try {
-    const { id } = req.params;
-    const result = await deleteBatchHistory(id);
-    if(result.success) {
-      res.json({ message: "Deleted successfully" });
-    } else {
-      res.status(404).json({ error: result.message });
-    }
-  } catch(err) {
-      console.error("deleteHistoryHandler failed:", err);
-      res.status(500).json({ error: "Failed to delete from history" });
-  }
-}
+// No longer needed
+/* export async function deleteHistoryHandler(req, res) { ... } */
 
 // ============================================================
 // BATCH CONTROL HANDLERS: Pause / Resume / Cancel
@@ -147,6 +140,9 @@ export async function pauseBatchHandler(req, res) {
     if (!fileId) return res.status(400).json({ error: "fileId is required" });
     const result = pauseBatch(fileId);
     if (result.success) {
+      if (req.user && req.user.username) {
+        await logAudit(req.user.username, "PAUSE_BATCH", `fileId: ${fileId}`);
+      }
       res.json(result);
     } else {
       res.status(400).json(result);
@@ -167,6 +163,9 @@ export async function resumeBatchHandler(req, res) {
     if (!fileId) return res.status(400).json({ error: "fileId is required" });
     const result = resumeBatch(fileId);
     if (result.success) {
+      if (req.user && req.user.username) {
+        await logAudit(req.user.username, "RESUME_BATCH", `fileId: ${fileId}`);
+      }
       res.json(result);
     } else {
       res.status(400).json(result);
@@ -189,12 +188,18 @@ export async function cancelBatchHandler(req, res) {
     // Try cancelling a running/paused batch first
     const runtimeResult = cancelBatch(fileId);
     if (runtimeResult.success) {
+      if (req.user && req.user.username) {
+        await logAudit(req.user.username, "CANCEL_BATCH", `fileId: ${fileId}, type: RUNTIME/PAUSED`);
+      }
       return res.json(runtimeResult);
     }
 
     // If not running, try cancelling a PENDING batch in the tracking file
     const pendingResult = await cancelPendingBatch(fileId);
     if (pendingResult.success) {
+      if (req.user && req.user.username) {
+        await logAudit(req.user.username, "CANCEL_BATCH", `fileId: ${fileId}, type: PENDING`);
+      }
       return res.json(pendingResult);
     }
 

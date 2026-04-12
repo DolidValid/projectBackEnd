@@ -4,7 +4,6 @@ import {
   active4GHandler, 
   resultBatchHandler, 
   getHistoryHandler, 
-  deleteHistoryHandler,
   pauseBatchHandler,
   resumeBatchHandler,
   cancelBatchHandler,
@@ -31,7 +30,7 @@ router.post("/resultBatch", resultBatchHandler);
 
 // History and deletion
 router.get("/batch-history", getHistoryHandler);
-router.delete("/batch-history/:id", deleteHistoryHandler);
+// router.delete("/batch-history/:id", deleteHistoryHandler);
 
 // Batch control: Pause / Resume / Cancel
 router.post("/batch-control/pause", pauseBatchHandler);

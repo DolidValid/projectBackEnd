@@ -9,13 +9,43 @@ const TRACKING_FILE = path.join(process.cwd(), 'batch_info.txt');
 // THROTTLE / TPS CONFIGURATION
 // ============================================================
 const THROTTLE_CONFIG = {
-  TPS: parseInt(process.env.BATCH_TPS) || 2,              // 5 calls per second by default
-  BURST_SIZE: parseInt(process.env.BATCH_BURST) || 1,      // 1 = strictly sequential
-  TIMEOUT_MS: parseInt(process.env.BATCH_TIMEOUT) || 30000, // 30s per request
+  PEAK_TPS: parseInt(process.env.BATCH_TPS) || 2,
+  OFF_PEAK_TPS: parseInt(process.env.BATCH_OFF_PEAK_TPS) || 10,
+  OFF_PEAK_START: process.env.BATCH_OFF_PEAK_START || "00:01",
+  OFF_PEAK_END: process.env.BATCH_OFF_PEAK_END || "04:00",
+  BURST_SIZE: parseInt(process.env.BATCH_BURST) || 1,
+  TIMEOUT_MS: parseInt(process.env.BATCH_TIMEOUT) || 30000,
 };
-THROTTLE_CONFIG.DELAY_BETWEEN_CALLS_MS = Math.ceil(1000 / THROTTLE_CONFIG.TPS);
 
-console.log(`[BatchProcessor] Throttle config: ${THROTTLE_CONFIG.TPS} TPS, ${THROTTLE_CONFIG.DELAY_BETWEEN_CALLS_MS}ms delay, burst=${THROTTLE_CONFIG.BURST_SIZE}, timeout=${THROTTLE_CONFIG.TIMEOUT_MS}ms`);
+/** Parse "HH:mm" into minutes since midnight */
+function timeToMinutes(timeStr) {
+  const [h, m] = timeStr.split(':').map(Number);
+  return (h * 60) + (m || 0);
+}
+
+/**
+ * Returns the current delay in ms based on time-of-day traffic rules.
+ * High traffic (Peak): 2 TPS (or from env)
+ * Low traffic (Off-Peak): 10 TPS (or from env)
+ */
+function getCurrentDelay() {
+  const now = new Date();
+  const currentMinutes = (now.getHours() * 60) + now.getMinutes();
+
+  const startMinutes = timeToMinutes(THROTTLE_CONFIG.OFF_PEAK_START);
+  const endMinutes = timeToMinutes(THROTTLE_CONFIG.OFF_PEAK_END);
+
+  // Simple range check (handles same-day ranges like 00:01 to 04:00)
+  // For overnight ranges (e.g. 23:00 to 05:00), this would need expansion.
+  const isOffPeak = currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  
+  const currentTPS = isOffPeak ? THROTTLE_CONFIG.OFF_PEAK_TPS : THROTTLE_CONFIG.PEAK_TPS;
+  return Math.ceil(1000 / currentTPS);
+}
+
+console.log(`[BatchProcessor] Dynamic Throttle initialized: 
+  - Peak: ${THROTTLE_CONFIG.PEAK_TPS} TPS 
+  - Off-Peak: ${THROTTLE_CONFIG.OFF_PEAK_TPS} TPS (${THROTTLE_CONFIG.OFF_PEAK_START} to ${THROTTLE_CONFIG.OFF_PEAK_END})`);
 
 // ============================================================
 // BATCH STATE MANAGEMENT (Pause / Resume / Cancel)
@@ -385,6 +415,8 @@ async function processCreateContract(fileId, filePath, dataArray) {
     let transactionId = null;
     let lineStatus = 'FAILED';
     let errorMessage = null;
+    let wsResponseBody = null;
+    let httpStatus = null;
 
     try {
       console.log(`[BatchProcessor] 📡 Calling CreateContract: ${endpointUrl}`);
@@ -400,6 +432,8 @@ async function processCreateContract(fileId, filePath, dataArray) {
       const responseBody = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
       transactionId = extractTransactionId(responseBody);
       lineStatus = 'SUCCESS';
+      httpStatus = response.status;
+      wsResponseBody = responseBody;
       successCount++;
       await logMessage(`✅ Line ${i+1} SUCCESS. TxId: ${transactionId || 'N/A'}`);
     } catch (err) {
@@ -408,6 +442,8 @@ async function processCreateContract(fileId, filePath, dataArray) {
       await logMessage(`❌ Line ${i+1} FAILED: ${err.message}`);
       if (err.response) {
         const errBody = typeof err.response.data === 'string' ? err.response.data : JSON.stringify(err.response.data);
+        httpStatus = err.response.status;
+        wsResponseBody = errBody;
         console.error(`[BatchProcessor] 🔥 ESB ERROR BODY (${err.response.status}):`, errBody);
         await logMessage(`   DEBUG: WS Response Content: ${errBody}`);
         transactionId = extractTransactionId(errBody);
@@ -419,14 +455,21 @@ async function processCreateContract(fileId, filePath, dataArray) {
     dataArray[i].transactionId = transactionId || null;
     dataArray[i].wsStatus = lineStatus;
     if (errorMessage) dataArray[i].wsError = errorMessage;
+    if (httpStatus) dataArray[i].httpStatus = httpStatus;
+    if (wsResponseBody) dataArray[i].wsResponse = wsResponseBody;
 
     await fs.writeFile(filePath, JSON.stringify(dataArray, null, 2), 'utf8');
     await updateBatchTracking(fileId, {
       progress: `${i + 1}/${dataArray.length}`,
-      etat: 'IN_PROGRESS'
+      etat: 'IN_PROGRESS',
+      successCount,
+      failCount
     });
 
-    if (i < dataArray.length - 1) await sleep(THROTTLE_CONFIG.DELAY_BETWEEN_CALLS_MS);
+    if (i < dataArray.length - 1) {
+      const delay = getCurrentDelay();
+      await sleep(delay);
+    }
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
@@ -533,6 +576,8 @@ async function processSetStatus(fileId, filePath, dataArray) {
     let transactionId = null;
     let lineStatus = 'FAILED';
     let errorMessage = null;
+    let wsResponseBody = null;
+    let httpStatus = null;
 
     try {
       console.log(`[BatchProcessor] 📡 Calling SetStatus: ${endpointUrl}`);
@@ -548,6 +593,8 @@ async function processSetStatus(fileId, filePath, dataArray) {
       const responseBody = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
       transactionId = extractTransactionId(responseBody);
       lineStatus = 'SUCCESS';
+      httpStatus = response.status;
+      wsResponseBody = responseBody;
       successCount++;
       await logMessage(`✅ Line ${i+1} SUCCESS. TxId: ${transactionId || 'N/A'}`);
     } catch (err) {
@@ -556,6 +603,8 @@ async function processSetStatus(fileId, filePath, dataArray) {
       await logMessage(`❌ Line ${i+1} FAILED: ${err.message}`);
       if (err.response) {
         const errBody = typeof err.response.data === 'string' ? err.response.data : JSON.stringify(err.response.data);
+        httpStatus = err.response.status;
+        wsResponseBody = errBody;
         console.error(`[BatchProcessor] 🔥 ESB ERROR BODY (${err.response.status}):`, errBody);
         await logMessage(`   DEBUG: WS Response Content: ${errBody}`);
         transactionId = extractTransactionId(errBody);
@@ -567,14 +616,21 @@ async function processSetStatus(fileId, filePath, dataArray) {
     dataArray[i].transactionId = transactionId || null;
     dataArray[i].wsStatus = lineStatus;
     if (errorMessage) dataArray[i].wsError = errorMessage;
+    if (httpStatus) dataArray[i].httpStatus = httpStatus;
+    if (wsResponseBody) dataArray[i].wsResponse = wsResponseBody;
 
     await fs.writeFile(filePath, JSON.stringify(dataArray, null, 2), 'utf8');
     await updateBatchTracking(fileId, {
       progress: `${i + 1}/${dataArray.length}`,
-      etat: 'IN_PROGRESS'
+      etat: 'IN_PROGRESS',
+      successCount,
+      failCount
     });
 
-    if (i < dataArray.length - 1) await sleep(THROTTLE_CONFIG.DELAY_BETWEEN_CALLS_MS);
+    if (i < dataArray.length - 1) {
+      const delay = getCurrentDelay();
+      await sleep(delay);
+    }
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);

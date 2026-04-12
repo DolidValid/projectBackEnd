@@ -127,7 +127,10 @@ async function getBatchModeResults(batchEntry, { searchMsisdn, searchTransaction
       PROCESS_ADDITION_MSG: dbRow?.ADDITIONAL_INPUT || '',
       TRACE_IN_STEP: dbRow?.TRACE_INFO || dbRow?.STEP || '',
       CREATION_DATE: dbRow?.CREATION_DATE || '',
-      STATUS_DATE: dbRow?.STATUS_DATE || ''
+      STATUS_DATE: dbRow?.STATUS_DATE || '',
+      wsResponse: record.wsResponse || '',
+      wsError: record.wsError || '',
+      httpStatus: record.httpStatus || null
     };
   });
 

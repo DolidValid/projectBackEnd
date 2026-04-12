@@ -233,4 +233,15 @@ export async function deleteBatchHistory(id) {
   }
 }
 
-export { insertInfoFile, InsertSet3g };
+async function logAudit(username, action, details) {
+  const auditPath = path.join(process.cwd(), 'src', 'logs', 'audit.log');
+  const timestamp = new Date().toISOString();
+  const logLine = `[${timestamp}] User: ${username}, Action: ${action}, Details: ${details}\n`;
+  try {
+    await fs.appendFile(auditPath, logLine, 'utf8');
+  } catch (err) {
+    console.error("Failed to write audit log:", err);
+  }
+}
+
+export { insertInfoFile, InsertSet3g, logAudit };

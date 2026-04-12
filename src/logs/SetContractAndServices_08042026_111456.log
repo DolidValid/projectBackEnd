@@ -1,0 +1,22 @@
+[2026-04-08T10:16:00.031Z] 🚀 Starting processCreateContract for File ID: SetContractAndServices_08042026_111456 with 10 records.
+[2026-04-08T10:16:00.033Z] --- Processing Line 1 of 10 ---
+[2026-04-08T10:16:00.049Z] ❌ Line 1 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-04-08T10:16:00.561Z] --- Processing Line 2 of 10 ---
+[2026-04-08T10:16:00.566Z] ❌ Line 2 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-04-08T10:16:01.086Z] --- Processing Line 3 of 10 ---
+[2026-04-08T10:16:01.090Z] ❌ Line 3 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-04-08T10:16:01.609Z] --- Processing Line 4 of 10 ---
+[2026-04-08T10:16:01.614Z] ❌ Line 4 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-04-08T10:16:02.129Z] --- Processing Line 5 of 10 ---
+[2026-04-08T10:16:02.134Z] ❌ Line 5 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-04-08T10:16:02.648Z] --- Processing Line 6 of 10 ---
+[2026-04-08T10:16:02.652Z] ❌ Line 6 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-04-08T10:16:03.168Z] --- Processing Line 7 of 10 ---
+[2026-04-08T10:16:03.172Z] ❌ Line 7 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-04-08T10:16:03.689Z] --- Processing Line 8 of 10 ---
+[2026-04-08T10:16:03.693Z] ❌ Line 8 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-04-08T10:16:04.209Z] --- Processing Line 9 of 10 ---
+[2026-04-08T10:16:04.214Z] ❌ Line 9 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-04-08T10:16:04.729Z] --- Processing Line 10 of 10 ---
+[2026-04-08T10:16:04.734Z] ❌ Line 10 FAILED: connect ECONNREFUSED 127.0.0.1:170
+[2026-04-08T10:16:04.741Z] 📊 Finished SetContractAndServices_08042026_111456: 0 ok, 10 fail in 4.71s
