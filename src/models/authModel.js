@@ -32,16 +32,21 @@ const writeUsers = async (users) => {
 
 export const findUserByUsername = async (username) => {
   const users = await readUsers();
-  return users.find((u) => u.username === username);
+  const user = users.find((u) => u.username === username);
+  if (user && !user.role) {
+    user.role = "user"; // Default role for legacy users without a role field
+  }
+  return user;
 };
 
-export const createUser = async (username, password) => {
+export const createUser = async (username, password, role = "user") => {
   const users = await readUsers();
   const hashedPassword = await bcrypt.hash(password, 10);
   
   users.push({
     username,
     password: hashedPassword,
+    role,
     createdAt: new Date().toISOString(),
   });
 

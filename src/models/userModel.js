@@ -257,4 +257,43 @@ async function logAudit(username, action, details) {
   }
 }
 
+/**
+ * Read and parse audit log entries from the audit.log file.
+ * Returns an array of structured audit log objects, newest first.
+ */
+export async function getAuditLogs() {
+  const cwd = process.cwd();
+  const rootDir = (cwd.endsWith('src') || cwd.endsWith('src\\') || cwd.endsWith('src/')) 
+    ? path.join(cwd, '..') 
+    : cwd;
+  
+  const auditPath = path.join(rootDir, 'logs', 'audit.log');
+
+  try {
+    const data = await fs.readFile(auditPath, 'utf8');
+    const lines = data.split('\n').filter(line => line.trim() !== '');
+    
+    const logs = lines.map(line => {
+      // Parse format: [timestamp] (localTime) User: username | Action: action | Details: details
+      const match = line.match(/^\[(.+?)\]\s*\((.+?)\)\s*User:\s*(.+?)\s*\|\s*Action:\s*(.+?)\s*\|\s*Details:\s*(.+)$/);
+      if (match) {
+        return {
+          timestamp: match[1],
+          localTime: match[2],
+          username: match[3].trim(),
+          action: match[4].trim(),
+          details: match[5].trim()
+        };
+      }
+      return { raw: line };
+    });
+
+    // Return newest first
+    return logs.reverse();
+  } catch (err) {
+    if (err.code === 'ENOENT') return [];
+    throw err;
+  }
+}
+
 export { insertInfoFile, InsertSet3g, logAudit };

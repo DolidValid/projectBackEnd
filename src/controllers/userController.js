@@ -1,4 +1,4 @@
-import { insertInfoFile, InsertSet3g, getBatchHistory, deleteBatchHistory, logAudit } from "../models/userModel.js";
+import { insertInfoFile, InsertSet3g, getBatchHistory, deleteBatchHistory, logAudit, getAuditLogs } from "../models/userModel.js";
 import { getResultBatch } from "../services/resultBatchService.js";
 import { pauseBatch, resumeBatch, cancelBatch, getActiveBatches, cancelPendingBatch, getBatchStates } from "../services/batchProcessor.js";
 
@@ -235,6 +235,20 @@ export async function batchQueueHandler(req, res) {
   } catch (err) {
     console.error("batchQueueHandler failed:", err);
     res.status(500).json({ error: "Failed to fetch batch queue" });
+  }
+}
+
+/**
+ * Get audit logs (admin only).
+ * GET /api/users/audit-logs
+ */
+export async function getAuditLogsHandler(req, res) {
+  try {
+    const logs = await getAuditLogs();
+    res.json(logs);
+  } catch (err) {
+    console.error("getAuditLogsHandler failed:", err);
+    res.status(500).json({ error: "Failed to fetch audit logs" });
   }
 }
 

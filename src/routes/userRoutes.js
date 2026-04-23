@@ -7,8 +7,10 @@ import {
   pauseBatchHandler,
   resumeBatchHandler,
   cancelBatchHandler,
-  batchQueueHandler
+  batchQueueHandler,
+  getAuditLogsHandler
 } from "../controllers/userController.js";
+import { requireAdmin } from "../middleware/authMiddleware.js";
 
 /**
  * Express router instance for handling user-related routes.
@@ -39,5 +41,8 @@ router.post("/batch-control/cancel", cancelBatchHandler);
 
 // Batch queue: View active/pending batches
 router.get("/batch-queue", batchQueueHandler);
+
+// Audit Logs (admin only)
+router.get("/audit-logs", requireAdmin, getAuditLogsHandler);
 
 export default router;

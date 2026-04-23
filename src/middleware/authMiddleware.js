@@ -18,4 +18,16 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
+/**
+ * Middleware to restrict access to admin users only.
+ * Must be used AFTER authMiddleware (req.user must exist).
+ */
+const requireAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied. Admin only." });
+  }
+  next();
+};
+
 export default authMiddleware;
+export { requireAdmin };

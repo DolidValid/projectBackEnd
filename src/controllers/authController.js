@@ -23,16 +23,16 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Generate JWT
+    // Generate JWT (includes role for backend authorization)
     const token = jwt.sign(
-      { id: user.username, username: user.username },
+      { id: user.username, username: user.username, role: user.role },
       JWT_SECRET,
       { expiresIn: "8h" }
     );
 
     res.json({
       token,
-      user: { username: user.username }
+      user: { username: user.username, role: user.role }
     });
   } catch (err) {
     console.error("Login error:", err);
